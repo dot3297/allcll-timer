@@ -1,3 +1,16 @@
+/**
+ * ConfirmPopup — 범용 확인/취소 팝업
+ *
+ * ## 개요
+ * 앱 전반에서 재사용되는 확인/취소 다이얼로그 팝업 컴포넌트.
+ * 할일 "전체 삭제" 확인 등 사용자 의사 결정이 필요한 다양한 상황에서 사용된다.
+ *
+ * ## 주요 기능
+ * - title, message, confirmLabel, cancelLabel props로 텍스트 완전 커스터마이즈
+ * - title에서 \n 개행 문자 지원 (whitespace-pre-line)
+ * - 확인 버튼: onConfirm 콜백 호출
+ * - 취소 버튼: onCancel 콜백 호출
+ */
 type Props = {
   /** Title text. Use \n for explicit line breaks; the popup honours `whitespace-pre-line`. */
   title: string;

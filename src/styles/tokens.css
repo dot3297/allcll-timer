@@ -1,0 +1,124 @@
+/*
+  Design System Tokens — v1.1.0 (2026-06-05)
+  출처: /Users/kimeunsun/Desktop/design md/design.md
+  구조: primitive → semantic → component (3계층)
+
+  CSS 변수 네이밍 규칙:
+    Figma 토큰 `color/fg-text/solid` → `--color-fg-text-solid`
+    슬래시(/) → 하이픈(-) 변환
+*/
+
+/* ─── Dark mode (앱 전체가 다크 테마) ─────────────────────────────── */
+:root {
+  /* ── fg-text (텍스트 전경색) ── */
+  --color-fg-text-solid:        #ffffff;
+  --color-fg-text-solid-muted:  #262626;
+  --color-fg-text-weak:         #f9f9fa;
+  --color-fg-text-muted:        #b6b8b9;
+  --color-fg-text-subtle:       #95999d;
+  --color-fg-text-inverse:      #ffffff;
+  --color-fg-text-brand:        #ab94ff;
+  --color-fg-text-disable:      #6d7278;
+  --color-fg-text-error:        #ff7a68;
+  --color-fg-text-positive:     #c0ec2f;
+  --color-fg-text-warning:      #fbb29c;
+
+  /* ── fg-icon (아이콘 전경색) ── */
+  --color-fg-icon-weak:         #d8d8d8;
+  --color-fg-icon-muted:        #b6b8b9;
+  --color-fg-icon-subtle:       #868b90;
+  --color-fg-icon-solid-muted:  #333333;
+  --color-fg-icon-disable:      #6d7278;
+  --color-fg-icon-error:        #ff7a68;
+
+  /* ── bg (배경색) ── */
+  --color-bg-weak:              #262626;
+  --color-bg-muted:             #333333;
+  --color-bg-subtle:            #333333;
+  --color-bg-solid:             #ffffff;
+  --color-bg-input:             #333333;
+  --color-bg-input-secondary:   #262626;
+  --color-bg-nav-scrolled:      #262626;
+  --color-bg-neutral-solid:     #6d7278;
+  --color-bg-neutral-solid-pressed: #333333;
+  --color-bg-brand:             #9678ff;
+  --color-bg-brand-hover:       #9678ff;
+  --color-bg-brand-pressed:     #8461fa;
+  --color-bg-brand-subtle:      #e9e6ff;
+  --color-bg-brand-weak-pressed: #333333;
+  --color-bg-error:             #f79479;
+  --color-bg-error-pressed:     #f37555;
+  --color-bg-error-disabled:    #333333;
+  --color-bg-disable:           #333333;
+  --color-bg-pressed:           #333333;
+
+  /* ── border (테두리) ── */
+  --color-border-weak:          #6d7278;
+  --color-border-subtle:        #6d7278;
+  --color-border-solid:         #b6b8b9;
+  --color-border-strong:        #ffffff;
+  --color-border-inverse:       #ffffff;
+  --color-border-brand:         #9678ff;
+  --color-border-focus:         #ab94ff;
+  --color-border-error:         #ff7a68;
+  --color-border-disable:       #333333;
+
+  /* ── component/button (단일 모드) ── */
+  --btn-brand-bg:               #9678ff;
+  --btn-brand-bg-hover:         #8461fa;
+  --btn-brand-bg-pressed:       #654ec1;
+  --btn-brand-bg-disabled:      #efeff0;
+  --btn-brand-text:             #ffffff;
+  --btn-brand-weak-bg:          #f5f2ff;
+  --btn-brand-weak-text:        #9678ff;
+  --btn-neutral-bg:             #333333;
+  --btn-neutral-bg-pressed:     #262626;
+  --btn-neutral-bg-disabled:    #efeff0;
+  --btn-neutral-text:           #ffffff;
+  --btn-error-bg:               #f37555;
+  --btn-error-bg-pressed:       #f04d24;
+  --btn-error-bg-disabled:      #fdcebe;
+  --btn-error-text:             #ffffff;
+
+  /* ── spacing ── */
+  --spacing-xs:                 4px;
+  --spacing-sm:                 8px;
+  --spacing-lg:                 16px;
+
+  /* ── radius ── */
+  --radius-sm:                  8px;
+  --radius-lg:                  16px;
+  --radius-full:                9999px;
+
+  /* ── opacity ── */
+  --opacity-dim:                0.5;
+  --opacity-disabled:           0.38;
+  --opacity-pressed:            0.16;
+  --opacity-hover:              0.08;
+}
+
+/* ─── Light mode override (필요 시) ───────────────────────────────── */
+.light {
+  --color-fg-text-solid:        #262626;
+  --color-fg-text-solid-muted:  #ffffff;
+  --color-fg-text-weak:         #333333;
+  --color-fg-text-muted:        #6d7278;
+  --color-fg-text-subtle:       #868b90;
+  --color-fg-text-brand:        #9678ff;
+  --color-fg-text-disable:      #b6b8b9;
+
+  --color-bg-weak:              #ffffff;
+  --color-bg-muted:             #f9f9fa;
+  --color-bg-subtle:            #ffffff;
+  --color-bg-input:             #f7f7f8;
+  --color-bg-input-secondary:   #f9f9fa;
+  --color-bg-neutral-solid:     #333333;
+  --color-bg-neutral-solid-pressed: #262626;
+  --color-bg-brand-pressed:     #654ec1;
+
+  --color-border-weak:          #efeff0;
+  --color-border-subtle:        #d8d8d8;
+  --color-border-strong:        #262626;
+  --color-border-focus:         #9678ff;
+  --color-border-disable:       #efeff0;
+}

@@ -1,3 +1,18 @@
+/**
+ * SharedCalendar — 홈·할일 화면 공통 캘린더 컴포넌트
+ *
+ * ## 개요
+ * 홈 화면과 할일 화면에서 공통으로 사용하는 캘린더 컴포넌트.
+ * 접힌 뷰(주간)와 펼쳐진 뷰(월간) 두 가지 모드를 지원한다.
+ *
+ * ## 주요 기능
+ * - 접힌 뷰(1주): 가로 스크롤로 이전·다음 주 이동
+ * - 펼쳐진 뷰(1달): 날짜별 아크 링으로 진행률 시각화
+ * - progressData: { day, ratio(0~1) } 배열로 날짜별 아크 채움 비율 전달
+ * - 홈 화면: 타이머 공부 시간 기반으로 시간 구간별 비율 계산하여 전달
+ * - 할일 화면: 완료 할일 수 / 전체 할일 수 비율로 계산하여 전달
+ * - Canvas 기반 SVG 아크 경로로 부드러운 진행률 링 렌더링
+ */
 import { useState, useEffect } from "react";
 
 // ── SVG path constants ───────────────────────────────────────────────────────
@@ -52,11 +67,12 @@ function buildMonthGrid(year: number, month: number): GridCell[][] {
 // 해당 날짜가 포함된 주의 7일 (월요일 시작)
 type WeekDay = { day: number; month: number; year: number };
 
+// 주어진 날짜를 중앙(index 3)에 배치한 7일 윈도우를 반환
+// today가 항상 가운데에 위치: [today-3, today-2, today-1, today, today+1, today+2, today+3]
 function getWeekOf(date: Date): WeekDay[] {
-  const dow = (date.getDay() + 6) % 7;
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(date);
-    d.setDate(date.getDate() - dow + i);
+    d.setDate(date.getDate() - 3 + i);
     return { day: d.getDate(), month: d.getMonth(), year: d.getFullYear() };
   });
 }
@@ -66,40 +82,41 @@ type Theme = "light" | "dark";
 
 const T = {
   light: {
-    labelDefault:    "text-[#b6b8b9]",
-    labelToday:      "text-[#333]",
-    dayProgress:     "text-[#333]",
-    dayEmpty:        "text-[#b6b8b9]",
-    dayFuture:       "text-[#b6b8b9]",
-    dayToday:        "text-[#333]",
-    dayNextMonth:    "text-[#b6b8b9]",
-    ringProgress:    "border-[#d8d8d8]",   // Figma: border-subtle #d8d8d8
-    ringEmpty:       "border-[#efeff0]",
-    ringToday:       "border-[#9678FF]",   // 오늘: 보라 full ring
+    // Figma 7179-238053 라이트 모드 정확한 값
+    labelDefault:    "text-[#b6b8b9]",   // fg-text/disable Light #b6b8b9 (과거·미래 요일)
+    labelToday:      "text-[#333333]",   // fg-icon/weak Light #333 (오늘 요일)
+    dayProgress:     "text-[#333333]",   // fg-icon/weak Light #333 (공부 기록 있는 날)
+    dayEmpty:        "text-[#333333]",   // fg-icon/weak Light #333 (공부 기록 없는 과거)
+    dayFuture:       "text-[#b6b8b9]",  // fg-text/disable Light #b6b8b9 (미래 날짜)
+    dayToday:        "text-[#333333]",   // fg-icon/weak Light #333 (오늘 날짜)
+    dayNextMonth:    "text-[#b6b8b9]",  // fg-text/disable Light #b6b8b9 (인접 월)
+    ringProgress:    "border-[#d8d8d8]", // border/subtle Light #d8d8d8 (공부 기록 있는 날 링)
+    ringEmpty:       "border-[#efeff0]", // border/disable Light #efeff0 (미래·기록 없는 날 링)
+    ringToday:       "border-[var(--color-border-brand)]", // 오늘: 보라 full ring #9678ff
     navBg:           "white",
-    navBorder:       "#EFEFF0",
+    navBorder:       "#efeff0",
     navArrow:        "#333333",
-    monthText:       "text-[#333]",
+    monthText:       "text-[#333333]",
     handle:          "bg-[#d8d8d8]",
     shadow:          "drop-shadow(0px 4px 4px rgba(110,109,120,0.04))",
     shadowToday:     "drop-shadow(0px 4px 4px rgba(110,109,120,0.08))",
   },
   dark: {
-    labelDefault:    "text-[#6d7278]",
-    labelToday:      "text-[#f9f9fa]",
+    labelDefault:    "text-[var(--color-fg-text-disable)]",
+    labelToday:      "text-[var(--color-fg-text-weak)]",
     dayProgress:     "text-[#d8d8d8]",
     dayEmpty:        "text-[#d8d8d8]",
-    dayFuture:       "text-[#6D7278]",
-    dayToday:        "text-[#f9f9fa]",
-    dayNextMonth:    "text-[#6d7278]",
-    ringProgress:    "border-[#b6b8b9]",
-    ringEmpty:       "border-[#6D7278]",
-    ringToday:       "border-[#9678FF]",   // 오늘: 보라 full ring
-    navBg:           "#333",
+    dayFuture:       "text-[var(--color-fg-text-disable)]",
+    dayToday:        "text-[var(--color-fg-text-weak)]",
+    dayNextMonth:    "text-[var(--color-fg-text-disable)]",
+    ringProgress:    "border-[var(--color-fg-text-muted)]",
+    ringEmpty:       "border-[var(--color-fg-text-disable)]",
+    ringToday:       "border-[var(--color-border-brand)]",   // 오늘: 보라 full ring
+    navBg:           "var(--color-bg-muted)",
     navBorder:       "#404040",
     navArrow:        "#D8D8D8",
-    monthText:       "text-[#f9f9fa]",
-    handle:          "bg-[#6d7278]",
+    monthText:       "text-[var(--color-fg-text-weak)]",
+    handle:          "bg-[var(--color-fg-text-disable)]",
     shadow:          "drop-shadow(0px 4px 4px rgba(110,109,120,0.04))",
     shadowToday:     "drop-shadow(0px 4px 4px rgba(110,109,120,0.04))",
   },
@@ -124,7 +141,7 @@ function DayCell({ label, day, isToday, isFuture, hasProgress, nextMonth, theme,
 
   // 우선순위: 선택 > 오늘 > 미래 > 인접월 > progress > 기본
   const dayText = isSelected
-    ? "text-[#333333]"
+    ? "text-[var(--color-fg-text-solid-muted)]"
     : isToday                 // 오늘이 인접 달 행에 있어도 오늘 색상 우선
     ? t.dayToday
     : isFuture
@@ -161,7 +178,7 @@ function DayCell({ label, day, isToday, isFuture, hasProgress, nextMonth, theme,
           {label}
         </p>
       )}
-      <div className={`flex flex-col items-center justify-center p-[8px] rounded-full size-[35px] relative ${isSelected ? "bg-[#9678FF]" : ""}`}>
+      <div className={`flex flex-col items-center justify-center p-[8px] rounded-full size-[35px] relative ${isSelected ? "bg-[var(--color-bg-brand)]" : ""}`}>
         <div
           aria-hidden="true"
           className={`absolute inset-0 rounded-full border-[2px] border-solid pointer-events-none ${ringBorder}`}
@@ -177,7 +194,7 @@ function DayCell({ label, day, isToday, isFuture, hasProgress, nextMonth, theme,
               <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 16.7768 18.2778">
                 <path
                   d={ARC_PATH}
-                  stroke="#9678FF"
+                  stroke="var(--color-border-brand)"
                   strokeWidth="2"
                   pathLength={1}
                   style={arcStyle}

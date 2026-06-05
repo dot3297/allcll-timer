@@ -1,3 +1,20 @@
+/**
+ * RankingScreen — 랭킹 화면
+ *
+ * ## 개요
+ * 타이머 사이드 메뉴의 "랭킹" 버튼을 탭하면 진입하는 랭킹 전체 화면 컴포넌트.
+ * 학년·클럽 탭 전환, 티어 캐러셀, 유저 순위 리스트를 제공한다.
+ *
+ * ## 주요 기능
+ * - 고2 / 클럽 탭 전환으로 다른 랭킹 카테고리 표시
+ * - 티어 캐러셀: 브론즈~다이아몬드 등 티어 배지 이미지 슬라이드 (로컬 SVG 에셋 사용)
+ * - 유저 리스트: 순위·닉네임·공부 시간 등 랭킹 정보 표시
+ * - 티어 배지 이미지: /src/imports/랭킹티어/ 경로의 로컬 SVG 파일 사용
+ *
+ * ## 현재 상태 (TODO)
+ * - [ ] 서버 API 연동 (현재 더미 데이터 사용)
+ * - [ ] 실시간 랭킹 업데이트 구현
+ */
 import { useState, useEffect, useRef } from "react";
 import BottomNav from "./BottomNav";
 import imgInfoIcon from "../../imports/랭킹아이콘/info_circle.svg";
@@ -157,8 +174,8 @@ function TierBadge({ tier, isActive, onClick }: { tier: number; isActive: boolea
   const pillH         = isActive ? 32 : 26.88;
   const pillPx        = isActive ? 16 : 13.44;
   const pillLeft      = isActive ? 5 : 3;
-  const pillBg        = isActive ? "#f9f9fa" : "#333";
-  const pillTextColor = isActive ? "#262626" : "#6d7278";
+  const pillBg        = isActive ? "var(--color-fg-text-weak)" : "var(--color-bg-muted)";
+  const pillTextColor = isActive ? "var(--color-fg-text-solid-muted)" : "var(--color-fg-text-disable)";
   const fs            = isActive ? 14 : 12;
   const lh            = isActive ? "21px" : "18px";
   const badgeImg      = isActive
@@ -260,7 +277,7 @@ function TierCarousel({ activeTier, onChange }: { activeTier: number; onChange: 
 function MeBadge() {
   return (
     <div className="bg-white flex items-center justify-center rounded-full shrink-0" style={{ width: 20, height: 20 }}>
-      <p className="font-['Pretendard:SemiBold',sans-serif] text-[10px] leading-[16px] text-[#262626] text-center">나</p>
+      <p className="font-['Pretendard:SemiBold',sans-serif] text-[10px] leading-[16px] text-[var(--color-fg-text-solid-muted)] text-center">나</p>
     </div>
   );
 }
@@ -270,7 +287,7 @@ function RankRow({ item, tick }: { item: RankItem; tick: number }) {
   return (
     <div
       className={`flex gap-[42px] items-center px-[12px] py-[8px] rounded-[12px] drop-shadow-[0px_4px_4px_rgba(110,109,120,0.04)] ${
-        item.isMe ? "bg-[#333]" : ""
+        item.isMe ? "bg-[var(--color-bg-muted)]" : ""
       }`}
     >
       {/* Left: rank + avatar + name */}
@@ -281,7 +298,7 @@ function RankRow({ item, tick }: { item: RankItem; tick: number }) {
           </p>
         </div>
         <Avatar size={40} idx={item.avatarIdx} />
-        <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-[#b6b8b9] overflow-hidden text-ellipsis whitespace-nowrap">
+        <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-[var(--color-fg-text-muted)] overflow-hidden text-ellipsis whitespace-nowrap">
           {item.name}
         </p>
         {item.isMe && <MeBadge />}
@@ -325,7 +342,7 @@ export default function RankingScreen({
   const meItem     = myTierData.find(item => item.isMe);
 
   return (
-    <div className="bg-[#262626] h-full w-full flex flex-col relative">
+    <div className="bg-[var(--color-bg-weak)] h-full w-full flex flex-col relative">
 
       {/* ── Status bar ── */}
       <div className="h-[42px] relative shrink-0 w-full">
@@ -333,7 +350,7 @@ export default function RankingScreen({
           <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgSymbol} />
         </div>
         <p
-          className="absolute font-['SF_Pro:Medium',sans-serif] font-[510] text-[#f9f9fa] text-[15px] tracking-[-0.165px] whitespace-nowrap"
+          className="absolute font-['SF_Pro:Medium',sans-serif] font-[510] text-[var(--color-fg-text-weak)] text-[15px] tracking-[-0.165px] whitespace-nowrap"
           style={{ fontVariationSettings: "'wdth' 100", left: 29.5, top: "calc(50% - 9px)" }}
         >
           9:41
@@ -343,7 +360,7 @@ export default function RankingScreen({
       {/* ── Header ── */}
       <div className="h-[56px] shrink-0 flex items-center px-[12px] py-[8px]">
         <div className="flex h-[36px] items-center px-[12px] py-[8px] rounded-[8px]">
-          <p className="font-['Pretendard:SemiBold',sans-serif] text-[#f9f9fa] text-[20px] leading-[28px] whitespace-nowrap">랭킹</p>
+          <p className="font-['Pretendard:SemiBold',sans-serif] text-[var(--color-fg-text-weak)] text-[20px] leading-[28px] whitespace-nowrap">랭킹</p>
         </div>
       </div>
 
@@ -359,11 +376,11 @@ export default function RankingScreen({
               setTierByTab(prev => ({ ...prev, [tab]: TAB_DEFAULT_TIER[tab] }));
             }}
             className={`flex-1 h-[40px] flex items-center justify-center px-[16px] py-[10px] transition-colors ${
-              activeTab === tab ? "border-b-2 border-[#f9f9fa]" : ""
+              activeTab === tab ? "border-b-2 border-[var(--color-fg-text-weak)]" : ""
             }`}
           >
             <p className={`font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] whitespace-nowrap ${
-              activeTab === tab ? "text-[#f9f9fa]" : "text-[#b6b8b9]"
+              activeTab === tab ? "text-[var(--color-fg-text-weak)]" : "text-[var(--color-fg-text-muted)]"
             }`}>
               {tab}
             </p>
@@ -372,7 +389,7 @@ export default function RankingScreen({
       </div>
 
       {/* ── Divider ── */}
-      <div className="bg-[#6d7278] h-px w-full shrink-0" />
+      <div className="bg-[var(--color-fg-text-disable)] h-px w-full shrink-0" />
 
       {/* ── Tier section (fixed — does not scroll) ── */}
       <div className="shrink-0 relative flex flex-col items-center py-[24px] gap-[8px]">
@@ -403,7 +420,7 @@ export default function RankingScreen({
 
         {/* My rank card — meItem 기반 동적 렌더링 */}
         {meItem && (
-          <div className="bg-[#333] drop-shadow-[0px_4px_4px_rgba(110,109,120,0.04)] flex items-center px-[12px] py-[8px] rounded-[12px] mx-[16px] w-[calc(100%-32px)]">
+          <div className="bg-[var(--color-bg-muted)] drop-shadow-[0px_4px_4px_rgba(110,109,120,0.04)] flex items-center px-[12px] py-[8px] rounded-[12px] mx-[16px] w-[calc(100%-32px)]">
             <div className="flex flex-1 gap-[42px] items-center min-w-0">
               <div className="flex flex-1 gap-[8px] items-center min-w-0">
                 <div className="flex flex-col items-center justify-center shrink-0 size-[20px] overflow-hidden">
@@ -427,7 +444,7 @@ export default function RankingScreen({
         {/* Bottom fog */}
         <div
           className="pointer-events-none absolute bottom-0 left-0 right-0 h-[32px]"
-          style={{ background: "linear-gradient(to bottom, rgba(38,38,38,0) 0%, #262626 100%)" }}
+          style={{ background: "linear-gradient(to bottom, rgba(38,38,38,0) 0%, var(--color-bg-weak) 100%)" }}
         />
       </div>
 
@@ -460,7 +477,7 @@ export default function RankingScreen({
             onClick={() => setShowGradeInfo(false)}
           />
           {/* 팝업 카드 */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[343px] max-w-[480px] bg-[#262626] rounded-[16px] p-[24px] flex flex-col gap-[16px] items-center overflow-hidden">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[343px] max-w-[480px] bg-[var(--color-bg-weak)] rounded-[16px] p-[24px] flex flex-col gap-[16px] items-center overflow-hidden">
             <div className="flex flex-col gap-[32px] items-start w-full">
 
               {/* 제목 + 설명 + 테이블 */}
@@ -478,7 +495,7 @@ export default function RankingScreen({
                   </p>
                 </div>
                 {/* 등급표 */}
-                <div className="bg-[#333] rounded-[12px] p-[16px] w-full">
+                <div className="bg-[var(--color-bg-muted)] rounded-[12px] p-[16px] w-full">
                   <div className="flex flex-col gap-[8px] font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px]">
                     {[
                       { tier: "1조", desc: "총 8시간 이상" },
@@ -499,7 +516,7 @@ export default function RankingScreen({
               <button
                 type="button"
                 onClick={() => setShowGradeInfo(false)}
-                className="bg-[#9678ff] h-[44px] w-full flex items-center justify-center rounded-[8px] active:bg-[#654ec1] transition-colors"
+                className="bg-[var(--color-bg-brand)] h-[44px] w-full flex items-center justify-center rounded-[8px] active:bg-[var(--color-bg-brand-pressed)] transition-colors"
               >
                 <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-white text-center">
                   확인

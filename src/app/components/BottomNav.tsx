@@ -1,3 +1,19 @@
+/**
+ * BottomNav — 하단 네비게이션 바
+ *
+ * ## 개요
+ * 타이머·어제의 나·할일 3개 탭으로 구성된 전역 하단 네비게이션.
+ * 각 탭은 activeTab prop과 비교해 활성/비활성 색상(#9678FF / #6D7278)을 결정한다.
+ *
+ * ## 탭 구성
+ * - 타이머  : 앱의 메인 화면. 타이머 실행 중에도 항상 마운트 유지 (z-index 레이어링)
+ * - 어제의 나: 전날 공부 통계 및 비교 화면
+ * - 할일    : 할일 목록 관리 화면
+ *
+ * ## 참고
+ * - 랭킹 탭은 제거됨. 랭킹 화면은 타이머 화면 우측 사이드 버튼에서만 진입.
+ * - Safe Area(34px) + Home Indicator pill 포함.
+ */
 import type { ReactNode } from "react";
 
 export type BottomNavTab = 'timer' | 'yesterday' | 'todo';
@@ -9,8 +25,8 @@ const SVG_YESTERDAY  = "M5.5 18H0V6H5.5V18ZM12.75 0H7.25V18H12.75V0ZM20 8H14.5V1
 const SVG_TODO       = "M18 0H2C0.9 0 0 0.9 0 2V16C0 17.1 0.9 18 2 18H18C19.1 18 20 17.1 20 16V2C20 0.9 19.1 0 18 0ZM8 14H3V12H8V14ZM8 10H3V8H8V10ZM8 6H3V4H8V6ZM12.82 12L10 9.16L11.41 7.75L12.82 9.17L15.99 6L17.41 7.42L12.82 12Z";
 const SVG_HOME_PILL  = "M129.713 0C131.222 0 132.109 0.103072 132.593 0.333984C133.456 0.746957 134 1.59507 134 2.5C134 3.405 133.456 4.25402 132.593 4.66602C132.109 4.89698 131.222 5 129.713 5H4.28711C2.77823 5 1.89125 4.89698 1.40723 4.66602C0.544227 4.25402 0 3.405 0 2.5C7.33714e-05 1.59507 0.544285 0.746957 1.40723 0.333984C1.89128 0.103072 2.77838 0 4.28711 0H129.713Z";
 
-const ACTIVE   = '#9678FF';
-const INACTIVE = '#6D7278';
+const ACTIVE   = 'var(--color-fg-text-brand)';
+const INACTIVE = 'var(--color-fg-text-disable)';
 
 // ── Shared tab item ──────────────────────────────────────────────────────────
 function TabItem({
@@ -74,10 +90,10 @@ export default function BottomNav({
   return (
     <div className="shrink-0 w-full">
       {/* Tab bar */}
-      <div className="bg-[#333] rounded-tl-[16px] rounded-tr-[16px] relative w-full">
+      <div className="bg-[var(--color-bg-muted)] rounded-tl-[16px] rounded-tr-[16px] relative w-full">
         {/* Top border + drop shadow overlay */}
         <div
-          className="absolute inset-0 pointer-events-none rounded-tl-[16px] rounded-tr-[16px] border-t border-[#6d7278]"
+          className="absolute inset-0 pointer-events-none rounded-tl-[16px] rounded-tr-[16px] border-t border-[var(--color-fg-text-disable)]"
           style={{ boxShadow: '0px -2px 8px 0px rgba(109,114,120,0.08)' }}
           aria-hidden="true"
         />
@@ -112,7 +128,7 @@ export default function BottomNav({
       </div>
 
       {/* Safe-area bar */}
-      <div className="bg-[#333] h-[34px] relative w-full">
+      <div className="bg-[var(--color-bg-muted)] h-[34px] relative w-full">
         <div className="absolute bottom-[8px] h-[5px] left-[32.13%] right-[32.13%]">
           <svg className="absolute block inset-0 size-full" fill="none" viewBox="0 0 134 5">
             <path d={SVG_HOME_PILL} fill="white" />

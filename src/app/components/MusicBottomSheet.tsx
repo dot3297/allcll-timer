@@ -1,3 +1,43 @@
+/**
+ * MusicBottomSheet — 배경음 바텀시트
+ *
+ * ## 개요
+ * 타이머 화면에서 배경음 버튼을 탭하면 열리는 바텀시트.
+ * 모트모트 YouTube 채널(@motemote-youtube)의 플레이리스트를 표시하고
+ * YouTube IFrame Player API를 통해 백그라운드 재생한다.
+ *
+ * ## 데이터 소스
+ * YouTube Data API v3 를 사용해 채널 플레이리스트를 가져온다.
+ *
+ *   1) 채널 ID 조회
+ *      GET /youtube/v3/channels?forHandle=motemote-youtube&part=id
+ *
+ *   2) 플레이리스트 목록 조회
+ *      GET /youtube/v3/playlists?channelId={id}&part=snippet&maxResults=20
+ *
+ *   3) 플레이리스트별 영상 목록 조회
+ *      GET /youtube/v3/playlistItems?playlistId={id}&part=snippet&maxResults=50
+ *      → 응답에서 title, thumbnail(mqdefault), videoId 추출
+ *
+ *   ※ API 키는 .env의 VITE_YOUTUBE_API_KEY에 보관.
+ *      GitHub에 절대 커밋하지 않는다.
+ *
+ * ## 재생
+ * 곡을 선택하면 숨겨진 YouTube IFrame Player에 videoId를 전달해
+ * 백그라운드 오디오만 재생한다. 타이머 탭을 전환해도 재생이 유지된다.
+ *
+ *   <iframe
+ *     src={`https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`}
+ *     style={{ display: 'none' }}
+ *   />
+ *
+ * ## 현재 상태 (TODO)
+ * - [ ] YouTube API 연동 (현재 하드코딩된 더미 데이터 사용)
+ * - [ ] IFrame Player 실제 재생 연결
+ * - [ ] 이전/다음 곡 기능 구현
+ * - [ ] 좋아요 목록 로컬스토리지 영속화
+ * - [ ] API 응답 캐싱 (하루 할당량 10,000 유닛 절약)
+ */
 import { useState, useRef, useEffect } from "react";
 import svgPaths from "../../imports/음악아이콘탭시/svg-bcva7eqjg3";
 import playerSvgPaths from "../../imports/Frame1707491357-2/svg-s95bx09h17";

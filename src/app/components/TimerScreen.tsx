@@ -1,3 +1,19 @@
+/**
+ * TimerScreen — 타이머 메인 화면
+ *
+ * ## 개요
+ * 앱의 핵심 화면인 타이머 메인 컴포넌트.
+ * 런닝 모드, 시계 모드, 뽀모도로 모드 세 가지 타이머 형태를 지원하며,
+ * 탭 전환 시에도 타이머 상태가 유지된다.
+ *
+ * ## 주요 기능
+ * - 런닝 모드: 배경 영상 + 캐릭터 애니메이션 + 공부 타이머
+ * - 시계 모드: 다크 배경 + bg-circle 레이아웃 + 어제의 나 비교 바
+ * - 뽀모도로 모드: 25/5분 카운트다운 + 토마토 링 시각화
+ * - 사이드 아이콘: 랭킹·캐시·배경음·설정 버튼
+ * - 탭 전환 시 타이머 상태 유지 (z-index 레이어링 방식)
+ * - 타이머 종료 시 Confetti Lottie 애니메이션 재생
+ */
 import { useState, useEffect } from "react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import confettiLottie from "../../imports/타이머종료/Confetti.lottie";
@@ -221,7 +237,7 @@ export default function TimerScreen({
   const ringOffset = RING_CIRC * (pomodoroSecsLeft / (pomodoroTotalSecs || 1)); // 0=full, CIRC=empty
 
   return (
-    <div className="h-full relative w-full bg-[#262626]" data-name="타이머_일반모드">
+    <div className="h-full relative w-full bg-[var(--color-bg-weak)]" data-name="타이머_일반모드">
       {/* 배경 — 런닝: 영상 / 쉴래요: 정지 이미지 / 시계: 다크 + bg-circle */}
       <div className="absolute inset-0 overflow-hidden">
         {/* 런닝 모드 비디오 — 시계/종료/쉴래요 상태면 숨김 */}
@@ -308,14 +324,14 @@ export default function TimerScreen({
         <button
           type="button"
           onClick={() => setTimerMode('running')}
-          className={`h-[32px] px-[16px] rounded-[999px] flex items-center justify-center transition-all duration-200 ${timerMode === 'running' ? 'bg-[#9678ff]' : 'opacity-30'}`}
+          className={`h-[32px] px-[16px] rounded-[999px] flex items-center justify-center transition-all duration-200 ${timerMode === 'running' ? 'bg-[var(--color-bg-brand)]' : 'opacity-30'}`}
         >
           <p className="font-['Pretendard:SemiBold',sans-serif] text-[14px] leading-[21px] text-white whitespace-nowrap">런닝</p>
         </button>
         <button
           type="button"
           onClick={() => setTimerMode('clock')}
-          className={`h-[32px] px-[16px] rounded-[999px] flex items-center justify-center transition-all duration-200 ${timerMode === 'clock' ? 'bg-[#9678ff]' : 'opacity-30'}`}
+          className={`h-[32px] px-[16px] rounded-[999px] flex items-center justify-center transition-all duration-200 ${timerMode === 'clock' ? 'bg-[var(--color-bg-brand)]' : 'opacity-30'}`}
         >
           <p className="font-['Pretendard:SemiBold',sans-serif] text-[14px] leading-[21px] text-white whitespace-nowrap">시계</p>
         </button>
@@ -341,12 +357,12 @@ export default function TimerScreen({
             >
               <path
                 d="M2.58506 0.77216C2.98792 0.525965 3.6258 0.335723 4.49867 0.201434C5.37155 0.0671445 6.06538 0 6.58015 0C8.12447 0 9.27712 0.324531 10.0381 0.973593C10.7991 1.62266 11.09 2.57387 10.911 3.82723C10.6871 5.39393 9.80308 6.59134 8.25876 7.41945C9.93737 7.95661 10.6312 9.16521 10.3402 11.0452C10.1388 12.6567 9.46736 13.8765 8.3259 14.7046C7.29636 15.4432 5.94228 15.8125 4.26367 15.8125C2.96554 15.8125 1.71218 15.488 0.503583 14.8389C0.257387 14.727 0.0895258 14.6599 0 14.6375L1.14145 12.3881C1.2086 12.4105 1.3317 12.4777 1.51075 12.5896C1.71218 12.6791 1.94719 12.7686 2.21576 12.8581C2.95435 13.1043 3.64818 13.2274 4.29724 13.2274C4.96868 13.2274 5.5506 13.0596 6.04299 12.7239C6.53539 12.3658 6.83754 11.8062 6.94944 11.0452C7.08373 10.2843 6.94944 9.74712 6.54658 9.43378C6.16609 9.12044 5.69608 8.96377 5.13655 8.96377C4.4651 8.96377 3.79366 8.96377 3.12221 8.96377L3.45794 6.68086H4.26367C4.93511 6.68086 5.56179 6.59134 6.14371 6.41229C6.18847 6.36753 6.278 6.30038 6.41229 6.21085C6.56896 6.09895 6.72563 5.95347 6.8823 5.77442C7.21802 5.37155 7.43064 4.87916 7.52017 4.29724C7.6097 3.71532 7.47541 3.27888 7.1173 2.98792C6.7592 2.69697 6.32276 2.55149 5.80799 2.55149C5.3156 2.55149 4.91273 2.58506 4.59939 2.6522C4.30843 2.69697 4.03985 2.75292 3.79366 2.82006C3.32365 2.90959 2.99912 2.99912 2.82006 3.08864L2.58506 0.77216Z"
-                fill="#262626"
+                fill="var(--color-fg-text-solid-muted)"
               />
             </svg>
           </div>
           {/* 보라 뱃지 — left-0 top-[27px] */}
-          <div className="col-1 row-1 ml-0 mt-[27px] bg-[#8461fa] flex items-center justify-center px-[8px] py-[2px] rounded-full w-[48px] pointer-events-none">
+          <div className="col-1 row-1 ml-0 mt-[27px] bg-[var(--color-bg-brand-hover)] flex items-center justify-center px-[8px] py-[2px] rounded-full w-[48px] pointer-events-none">
             <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-white whitespace-nowrap">랭킹</p>
           </div>
         </button>
@@ -361,14 +377,14 @@ export default function TimerScreen({
           {/* 흰 원 — 캐시 금액 텍스트 (Figma 7162-112507: #333, top 7.5px) */}
           <div className="col-1 row-1 ml-[8px] mt-0 bg-white rounded-full size-[32px] overflow-hidden relative pointer-events-none">
             <p
-              className="absolute font-['Pretendard:SemiBold',sans-serif] text-[12px] leading-[18px] text-[#333] whitespace-nowrap overflow-hidden text-ellipsis text-right"
+              className="absolute font-['Pretendard:SemiBold',sans-serif] text-[12px] leading-[18px] text-[var(--color-fg-text-solid-muted)] whitespace-nowrap overflow-hidden text-ellipsis text-right"
               style={{ left: 27.5, top: 7.5, transform: 'translateX(-100%)' }}
             >
               +{Math.min(cashBalance, 999)}
             </p>
           </div>
           {/* 보라 뱃지 */}
-          <div className="col-1 row-1 ml-0 mt-[27px] bg-[#8461fa] flex items-center justify-center px-[8px] py-[2px] rounded-full w-[48px] pointer-events-none">
+          <div className="col-1 row-1 ml-0 mt-[27px] bg-[var(--color-bg-brand-hover)] flex items-center justify-center px-[8px] py-[2px] rounded-full w-[48px] pointer-events-none">
             <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-white whitespace-nowrap">캐시</p>
           </div>
         </button>
@@ -383,13 +399,13 @@ export default function TimerScreen({
           <div className="col-1 row-1 ml-[8px] mt-0 bg-white rounded-full size-[32px] overflow-hidden flex items-center justify-center pointer-events-none">
             {hasSongSelected ? (
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M17.5 2.5V12.9167C17.5 13.6902 17.1927 14.4321 16.6457 14.9791C16.0987 15.526 15.3569 15.8333 14.5833 15.8333C13.8098 15.8333 13.0679 15.526 12.5209 14.9791C11.974 14.4321 11.6667 13.6902 11.6667 12.9167C11.6667 12.1431 11.974 11.4013 12.5209 10.8543C13.0679 10.3073 13.8098 10 14.5833 10C15.0333 10 15.4583 10.1 15.8333 10.2833V5.39167L7.5 7.16667V14.5833C7.5 15.3569 7.19271 16.0987 6.64573 16.6457C6.09875 17.1927 5.35688 17.5 4.58333 17.5C3.80979 17.5 3.06792 17.1927 2.52094 16.6457C1.97396 16.0987 1.66667 15.3569 1.66667 14.5833C1.66667 13.8098 1.97396 13.0679 2.52094 12.5209C3.06792 11.974 3.80979 11.6667 4.58333 11.6667C5.03333 11.6667 5.45833 11.7667 5.83333 11.95V5L17.5 2.5Z" fill="#262626"/>
+                <path d="M17.5 2.5V12.9167C17.5 13.6902 17.1927 14.4321 16.6457 14.9791C16.0987 15.526 15.3569 15.8333 14.5833 15.8333C13.8098 15.8333 13.0679 15.526 12.5209 14.9791C11.974 14.4321 11.6667 13.6902 11.6667 12.9167C11.6667 12.1431 11.974 11.4013 12.5209 10.8543C13.0679 10.3073 13.8098 10 14.5833 10C15.0333 10 15.4583 10.1 15.8333 10.2833V5.39167L7.5 7.16667V14.5833C7.5 15.3569 7.19271 16.0987 6.64573 16.6457C6.09875 17.1927 5.35688 17.5 4.58333 17.5C3.80979 17.5 3.06792 17.1927 2.52094 16.6457C1.97396 16.0987 1.66667 15.3569 1.66667 14.5833C1.66667 13.8098 1.97396 13.0679 2.52094 12.5209C3.06792 11.974 3.80979 11.6667 4.58333 11.6667C5.03333 11.6667 5.45833 11.7667 5.83333 11.95V5L17.5 2.5Z" fill="var(--color-fg-text-solid-muted)"/>
               </svg>
             ) : (
               <img src={imgMusicOff} alt="배경음 없음" width={20} height={20} />
             )}
           </div>
-          <div className="col-1 row-1 ml-0 mt-[27px] bg-[#8461fa] flex items-center justify-center px-[8px] py-[2px] rounded-full w-[48px] pointer-events-none">
+          <div className="col-1 row-1 ml-0 mt-[27px] bg-[var(--color-bg-brand-hover)] flex items-center justify-center px-[8px] py-[2px] rounded-full w-[48px] pointer-events-none">
             <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-white whitespace-nowrap">배경음</p>
           </div>
         </button>
@@ -403,10 +419,10 @@ export default function TimerScreen({
         >
           <div className="col-1 row-1 ml-[8px] mt-0 bg-white rounded-full size-[32px] overflow-hidden flex items-center justify-center pointer-events-none">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" fill="#262626" />
+              <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" fill="var(--color-fg-text-solid-muted)" />
             </svg>
           </div>
-          <div className="col-1 row-1 ml-0 mt-[27px] bg-[#8461fa] flex items-center justify-center px-[8px] py-[2px] rounded-full w-[48px] pointer-events-none">
+          <div className="col-1 row-1 ml-0 mt-[27px] bg-[var(--color-bg-brand-hover)] flex items-center justify-center px-[8px] py-[2px] rounded-full w-[48px] pointer-events-none">
             <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-white whitespace-nowrap">설정</p>
           </div>
         </button>
@@ -425,7 +441,7 @@ export default function TimerScreen({
             onClick={() => setShowSubjectSheet(true)}
             className="flex h-[36px] items-center justify-center gap-[4px] pl-[16px] pr-[8px] py-[8px] rounded-[8px] shrink-0 active:bg-white/10 transition-colors pointer-events-auto"
           >
-            <p className="font-['Pretendard:SemiBold',sans-serif] leading-[28px] text-[20px] text-[#f9f9fa] text-center whitespace-nowrap">
+            <p className="font-['Pretendard:SemiBold',sans-serif] leading-[28px] text-[20px] text-[var(--color-fg-text-weak)] text-center whitespace-nowrap">
               {selectedTaskName}
             </p>
             <svg viewBox="0 0 10 6" fill="none" className="w-[10px] h-[6px] shrink-0">
@@ -440,13 +456,13 @@ export default function TimerScreen({
           <div className="flex items-center justify-center shrink-0 w-full">
             <div className="w-[132px] flex flex-col items-start">
               <div className="flex items-center justify-center py-[4px] w-full">
-                <p className="flex-1 font-['Pretendard:Medium',sans-serif] leading-[21px] text-[14px] text-[#f9f9fa] text-center">{selectedTaskName}</p>
+                <p className="flex-1 font-['Pretendard:Medium',sans-serif] leading-[21px] text-[14px] text-[var(--color-fg-text-weak)] text-center">{selectedTaskName}</p>
               </div>
               <p className="font-['Pretendard:Medium',sans-serif] leading-[28px] text-[20px] text-center text-white w-full">{formatTime(subjectTimer)}</p>
             </div>
             <div className="w-[132px] flex flex-col items-start">
               <div className="flex items-center justify-center py-[4px] w-full">
-                <p className="flex-1 font-['Pretendard:Medium',sans-serif] leading-[21px] text-[14px] text-[#f9f9fa] text-center">오늘 총 시간</p>
+                <p className="flex-1 font-['Pretendard:Medium',sans-serif] leading-[21px] text-[14px] text-[var(--color-fg-text-weak)] text-center">오늘 총 시간</p>
               </div>
               <p className="font-['Pretendard:Medium',sans-serif] leading-[28px] text-[20px] text-white text-center w-full">{formatTime(totalTimer)}</p>
             </div>
@@ -455,9 +471,21 @@ export default function TimerScreen({
       )}
 
 
+      {/* 시계 모드 비교 바 — 버튼 위 20px (z-10으로 패널 위에 표시) */}
+      {timerMode === 'clock' && !isStopped && (
+        <div
+          className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center px-[16px] py-[8px] rounded-[999px] z-10"
+          style={{ bottom: 'calc(93px + 24px + 56px + 20px)', border: '1px solid var(--color-border-brand)', background: 'rgba(150,120,255,0.2)' }}
+        >
+          <p className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-white whitespace-nowrap">
+            어제의 나보다 +{formatTime(Math.max(0, mainTimer - 5094))} 앞서는중
+          </p>
+        </div>
+      )}
+
       {/* 타이머 컨트롤 영역 — 종료 후 숨김 */}
       <div
-        className={`absolute bg-[#262626] bottom-0 left-0 content-stretch flex flex-col justify-between items-center px-[16px] pt-[16px] w-full rounded-tl-[20px] rounded-tr-[20px] transition-opacity duration-500 gap-[20px] ${isStopped ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+        className={`absolute bg-[var(--color-bg-weak)] bottom-0 left-0 content-stretch flex flex-col justify-between items-center px-[16px] pt-[16px] w-full rounded-tl-[20px] rounded-tr-[20px] transition-opacity duration-500 ${isStopped ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
         style={{ paddingBottom: 'calc(93px + 24px)', height: 355 }}
       >
         {isPomodoroMode ? (
@@ -479,7 +507,7 @@ export default function TimerScreen({
                     <circle
                       cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RING_R}
                       fill="none"
-                      stroke="#9678ff"
+                      stroke="var(--color-bg-brand)"
                       strokeWidth={RING_STROKE}
                       strokeDasharray={RING_CIRC}
                       strokeDashoffset={ringOffset}
@@ -504,7 +532,7 @@ export default function TimerScreen({
                     </div>
                     {/* 카운트 배지 — 오른쪽 하단 */}
                     <div className="absolute bg-[#f79479] flex items-center justify-center px-[8px] py-[2px] rounded-full" style={{ left: 26, top: 26 }}>
-                      <p className="font-['Pretendard:SemiBold',sans-serif] leading-[18px] text-[12px] text-[#262626] whitespace-nowrap">
+                      <p className="font-['Pretendard:SemiBold',sans-serif] leading-[18px] text-[12px] text-[var(--color-fg-text-solid-muted)] whitespace-nowrap">
                         {pomodoroPhase === 'focus' ? pomodoroCount + 1 : pomodoroCount}
                       </p>
                     </div>
@@ -524,7 +552,7 @@ export default function TimerScreen({
                     className="content-stretch flex h-[36px] items-center justify-center overflow-clip px-[12px] py-[8px] relative rounded-[8px] shrink-0 active:bg-white/10 transition-colors"
                   >
                     <div className="content-stretch flex gap-[2px] items-center relative shrink-0">
-                      <p className="font-['Pretendard:Medium',sans-serif] leading-[21px] not-italic relative shrink-0 text-[14px] text-[#f9f9fa] text-center whitespace-nowrap">{selectedTaskName}</p>
+                      <p className="font-['Pretendard:Medium',sans-serif] leading-[21px] not-italic relative shrink-0 text-[14px] text-[var(--color-fg-text-weak)] text-center whitespace-nowrap">{selectedTaskName}</p>
                       <div className="relative shrink-0 size-[16px] flex items-center justify-center">
                         <svg viewBox="0 0 10 6" fill="none" className="w-[10px] h-[6px]">
                           <path d="M1 1L5 5L9 1" stroke="#F9F9FA" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -539,7 +567,7 @@ export default function TimerScreen({
                 <div className="flex flex-[1_0_0] flex-row items-center self-stretch">
                   <div className="content-stretch flex flex-[1_0_0] flex-col h-full items-start min-w-px relative">
                     <div className="content-stretch flex h-[36px] items-center justify-center py-[4px] relative shrink-0 w-full">
-                      <p className="font-['Pretendard:Medium',sans-serif] flex-[1_0_0] leading-[21px] min-w-px not-italic relative text-[14px] text-[#f9f9fa] text-center">
+                      <p className="font-['Pretendard:Medium',sans-serif] flex-[1_0_0] leading-[21px] min-w-px not-italic relative text-[14px] text-[var(--color-fg-text-weak)] text-center">
                         오늘 총 시간
                       </p>
                     </div>
@@ -553,7 +581,7 @@ export default function TimerScreen({
             {/* 종료 버튼 (단일 · full-width) */}
             <button
               onClick={() => { setIsStopped(true); setShowEndPopup(true); }}
-              className="w-full h-[56px] bg-[#6d7278] rounded-[8px] cursor-pointer active:bg-[#404040] transition-colors"
+              className="w-full h-[56px] bg-[var(--color-fg-text-disable)] rounded-[8px] cursor-pointer active:bg-[#404040] transition-colors"
             >
               <div className="flex flex-row items-center justify-center size-full">
                 <p className="font-['Pretendard:Medium',sans-serif] leading-[24px] text-[16px] text-center text-white">종료</p>
@@ -564,20 +592,6 @@ export default function TimerScreen({
           <>
             {/* ── 일반 모드 ────────────────────────────────────────── */}
             {/* 런닝 모드: time-info를 패널 안에 표시 */}
-            {/* 시계 모드: 비교 바 + 스페이서로 버튼 위치 고정 */}
-            {timerMode === 'clock' && (
-              <>
-                <div className="flex-1" />
-                <div
-                  className="flex items-center justify-center px-[16px] py-[8px] rounded-[999px] shrink-0"
-                  style={{ border: '1px solid #9678ff', background: 'rgba(150,120,255,0.2)' }}
-                >
-                  <p className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-white whitespace-nowrap">
-                    어제의 나보다 +{formatTime(Math.max(0, mainTimer - 5094))} 앞서는중
-                  </p>
-                </div>
-              </>
-            )}
             {/* 런닝 모드 time-info */}
             {timerMode === 'running' && (
               <div className="content-stretch flex flex-col gap-[2px] items-center relative shrink-0 w-full">
@@ -587,11 +601,11 @@ export default function TimerScreen({
                   onClick={() => setShowSubjectSheet(true)}
                   className="flex h-[36px] items-center justify-center gap-[4px] px-[12px] py-[8px] rounded-[8px] shrink-0 active:bg-white/10 transition-colors"
                 >
-                  <p className="font-['Pretendard:SemiBold',sans-serif] leading-[28px] text-[20px] text-[#f9f9fa] text-center whitespace-nowrap">
+                  <p className={`font-['Pretendard:SemiBold',sans-serif] leading-[28px] text-[20px] text-center whitespace-nowrap ${isResting ? 'text-[var(--color-fg-text-muted)]' : 'text-[var(--color-fg-text-weak)]'}`}>
                     {selectedTaskName}
                   </p>
                   <svg viewBox="0 0 10 6" fill="none" className="w-[10px] h-[6px] shrink-0">
-                    <path d="M1 1L5 5L9 1" stroke="#F9F9FA" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M1 1L5 5L9 1" stroke={isResting ? 'var(--color-fg-text-muted)' : 'var(--color-fg-text-weak)'} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </button>
                 {/* ② 메인 타이머 */}
@@ -600,30 +614,31 @@ export default function TimerScreen({
                 </p>
                 {/* ③ sub-time-row */}
                 <div className="flex gap-[12px] items-start justify-center shrink-0 w-full mt-[14px]">
+                  {/* 과목 — 쉴래요 시 #b6b8b9 (Figma 7183-261865) */}
                   <div className="w-[120px] flex flex-col items-center gap-0">
-                    <p className="font-['Pretendard:Medium',sans-serif] leading-[21px] text-[14px] text-[#f9f9fa] text-center whitespace-nowrap">{selectedTaskName}</p>
-                    <p className={`font-['Pretendard:Medium',sans-serif] leading-[28px] text-[20px] text-center ${isResting ? 'text-[#6d7278]' : 'text-white'}`}>{formatTime(subjectTimer)}</p>
+                    <p className={`font-['Pretendard:Medium',sans-serif] leading-[21px] text-[14px] text-center whitespace-nowrap ${isResting ? 'text-[var(--color-fg-text-muted)]' : 'text-[var(--color-fg-text-weak)]'}`}>{selectedTaskName}</p>
+                    <p className={`font-['Pretendard:Medium',sans-serif] leading-[28px] text-[20px] text-center ${isResting ? 'text-[var(--color-fg-text-muted)]' : 'text-white'}`}>{formatTime(subjectTimer)}</p>
                   </div>
                   <div className="w-[120px] flex flex-col items-center gap-0">
-                    <p className="font-['Pretendard:Medium',sans-serif] leading-[21px] text-[14px] text-[#f9f9fa] text-center whitespace-nowrap">오늘 총 시간</p>
+                    <p className="font-['Pretendard:Medium',sans-serif] leading-[21px] text-[14px] text-[var(--color-fg-text-weak)] text-center whitespace-nowrap">오늘 총 시간</p>
                     <p className="font-['Pretendard:Medium',sans-serif] leading-[28px] text-[20px] text-white text-center">{formatTime(totalTimer)}</p>
                   </div>
                 </div>
               </div>
             )}
-            <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full">
+            <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full mt-auto">
               <button
                 disabled={isResting}
                 onClick={() => { if (!isResting) { setIsStopped(true); setShowEndPopup(true); } }}
-                className={`flex-[1_0_0] h-[56px] min-w-px relative rounded-[8px] ${isResting ? 'bg-[#333] cursor-not-allowed' : 'bg-[#6d7278] cursor-pointer active:bg-[#404040] transition-colors'}`}
+                className={`flex-[1_0_0] h-[56px] min-w-px relative rounded-[8px] ${isResting ? 'bg-[var(--color-bg-muted)] cursor-not-allowed' : 'bg-[var(--color-fg-text-disable)] cursor-pointer active:bg-[#404040] transition-colors'}`}
               >
                 <div className="flex flex-row items-center justify-center size-full">
-                  <p className={`font-['Pretendard:Medium',sans-serif] leading-[24px] text-[16px] text-center ${isResting ? 'text-[#6d7278]' : 'text-white'}`}>종료</p>
+                  <p className={`font-['Pretendard:Medium',sans-serif] leading-[24px] text-[16px] text-center ${isResting ? 'text-[var(--color-fg-text-disable)]' : 'text-white'}`}>종료</p>
                 </div>
               </button>
               <button
                 onClick={handleRestToggle}
-                className="bg-[#9678ff] flex-[1_0_0] h-[56px] min-w-px relative rounded-[8px] cursor-pointer active:bg-[#654ec1] transition-colors"
+                className="bg-[var(--color-bg-brand)] flex-[1_0_0] h-[56px] min-w-px relative rounded-[8px] cursor-pointer active:bg-[var(--color-bg-brand-pressed)] transition-colors"
               >
                 <div className="flex flex-row items-center justify-center size-full">
                   <p className="font-['Pretendard:Medium',sans-serif] leading-[24px] text-[16px] text-center text-white">
@@ -658,7 +673,7 @@ export default function TimerScreen({
 
       {/* 캐시 히스토리 페이지 */}
       {showCashHistory && (
-        <div className="fixed inset-0 z-[60] bg-[#262626]">
+        <div className="fixed inset-0 z-[60] bg-[var(--color-bg-weak)]">
           <CashHistoryScreen onBack={() => setShowCashHistory(false)} />
         </div>
       )}
@@ -680,7 +695,7 @@ export default function TimerScreen({
             }
           `}</style>
           <div
-            className="relative bg-[#262626] rounded-[16px] p-[24px] w-[350px] flex flex-col gap-[16px] items-center"
+            className="relative bg-[var(--color-bg-weak)] rounded-[16px] p-[24px] w-[350px] flex flex-col gap-[16px] items-center"
             style={{ animation: "popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards" }}
           >
             {/* 컨페티 로띠 — 타이틀 텍스트 상단에 한 번만 재생 (3x 사이즈) */}
@@ -696,19 +711,19 @@ export default function TimerScreen({
                 캐시는 올클 스토어에서 사용할 수 있어요
               </p>
               {/* stats box */}
-              <div className="bg-[#333] rounded-[12px] p-[16px] flex items-center justify-center gap-px w-full">
+              <div className="bg-[var(--color-bg-muted)] rounded-[12px] p-[16px] flex items-center justify-center gap-px w-full">
                 <div className="flex flex-col items-center flex-1">
-                  <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[#95999d] w-full text-center">집중 시간</p>
+                  <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-subtle)] w-full text-center">집중 시간</p>
                   <p className="font-['Pretendard:SemiBold',sans-serif] text-[20px] leading-[28px] text-white w-full text-center tabular-nums">
                     {formatTime(mainTimer)}
                   </p>
                 </div>
                 <div className="flex flex-col items-center flex-1">
-                  <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[#95999d] w-full text-center">획득 업적</p>
+                  <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-subtle)] w-full text-center">획득 업적</p>
                   <p className="font-['Pretendard:SemiBold',sans-serif] text-[20px] leading-[28px] text-white w-full text-center tabular-nums">+{achievementCount}</p>
                 </div>
                 <div className="flex flex-col items-center flex-1">
-                  <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[#95999d] w-full text-center">획득 캐시</p>
+                  <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-subtle)] w-full text-center">획득 캐시</p>
                   <p className="font-['Pretendard:SemiBold',sans-serif] text-[20px] leading-[28px] text-white w-full text-center tabular-nums">+{cashCount}</p>
                 </div>
               </div>
@@ -731,7 +746,7 @@ export default function TimerScreen({
                 // 타이머 홈으로 이동
                 onGoHome?.(sessionSecs);
               }}
-              className="bg-[#9678ff] w-full h-[44px] rounded-[8px] flex items-center justify-center cursor-pointer active:bg-[#654ec1] transition-colors"
+              className="bg-[var(--color-bg-brand)] w-full h-[44px] rounded-[8px] flex items-center justify-center cursor-pointer active:bg-[var(--color-bg-brand-pressed)] transition-colors"
             >
               <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-white text-center">확인</p>
             </button>
@@ -849,12 +864,12 @@ function SubjectChangeSheet({
 
       {/* 시트 */}
       <div
-        className="fixed bottom-0 left-0 w-full bg-[#262626] rounded-tl-[16px] rounded-tr-[16px] z-50 transition-all duration-300 flex flex-col"
+        className="fixed bottom-0 left-0 w-full bg-[var(--color-bg-weak)] rounded-tl-[16px] rounded-tr-[16px] z-50 transition-all duration-300 flex flex-col"
         style={{ height: `${height}px` }}
       >
         {/* 헤더 */}
         <div className="flex items-center justify-between px-[16px] pt-[24px] pb-[10px] shrink-0">
-          <p className="font-['Pretendard:SemiBold',sans-serif] text-[18px] leading-[27px] text-[#f9f9fa]">
+          <p className="font-['Pretendard:SemiBold',sans-serif] text-[18px] leading-[27px] text-[var(--color-fg-text-weak)]">
             과목 변경
           </p>
           <button
@@ -890,7 +905,7 @@ function SubjectChangeSheet({
                 onClick={() => onSelect(task.name)}
                 className={`w-full flex items-center gap-[8px] text-left transition-colors active:opacity-70 ${
                   isSelected
-                    ? "bg-[#333] rounded-[8px] px-[12px] py-[12px] my-[2px]"
+                    ? "bg-[var(--color-bg-muted)] rounded-[8px] px-[12px] py-[12px] my-[2px]"
                     : "py-[12px]"
                 }`}
               >

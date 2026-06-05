@@ -1,3 +1,16 @@
+/**
+ * TodoEditSheet — 할일 항목 편집 바텀시트
+ *
+ * ## 개요
+ * 할일 화면에서 기존 할일 항목을 탭했을 때 표시되는 바텀시트 컴포넌트.
+ * 할일 내용을 수정하거나 삭제할 수 있다.
+ *
+ * ## 주요 기능
+ * - initialText prop으로 기존 할일 내용을 입력 필드에 pre-fill
+ * - 내용 수정 후 저장 시 onSave(newText) 콜백으로 부모에게 전달
+ * - 삭제 버튼: onDelete 콜백 호출
+ * - 바텀시트 열릴 때 입력 필드에 자동 포커스
+ */
 import { useEffect, useRef, useState } from "react";
 
 type Props = {

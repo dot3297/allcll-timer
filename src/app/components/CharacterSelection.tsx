@@ -1,3 +1,16 @@
+/**
+ * CharacterSelection — 캐릭터 선택 온보딩 화면
+ *
+ * ## 개요
+ * 타이머를 처음 시작하기 전 캐릭터를 선택하는 온보딩 화면 컴포넌트.
+ * 캐릭터를 선택하면 onStart 콜백이 호출되어 타이머 메인 화면으로 진입한다.
+ *
+ * ## 주요 기능
+ * - 남자·여자·고양이 3종 캐릭터 선택 UI
+ * - 크로마키 처리: Canvas API를 사용하여 캐릭터 소개 영상의 초록 배경을 실시간 제거 후 표시
+ * - 선택 완료 후 onStart(character) 콜백으로 선택한 캐릭터 정보 부모에게 전달
+ * - 로컬 import로 캐릭터 이미지 및 영상 에셋 관리
+ */
 import { useState, useEffect, useRef } from "react";
 import imgGirl from "../../imports/캐릭터선여자/b5b64fe36f1fb20103d3c9da8a1eefda7de19367.png";
 import imgBoy from "../../imports/캐릭터선여자/d6e94594e2c1501e7867fd52255fb888895a91b8.png";

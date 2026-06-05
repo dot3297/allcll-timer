@@ -1,3 +1,16 @@
+/**
+ * CategoryRenameSheet — 카테고리 이름 변경 바텀시트
+ *
+ * ## 개요
+ * 설정 화면에서 카테고리를 선택한 뒤 이름 변경을 선택하면 표시되는 바텀시트 컴포넌트.
+ * 기존 카테고리 이름이 입력 필드에 미리 채워진 상태로 열린다.
+ *
+ * ## 주요 기능
+ * - initialName prop으로 기존 이름을 입력 필드에 pre-fill
+ * - 이름 수정 후 확인 시 onRename(newName) 콜백으로 부모에게 전달
+ * - 취소 시 onCancel 콜백 호출
+ * - 바텀시트 열릴 때 입력 필드에 자동 포커스
+ */
 import { useEffect, useRef, useState } from "react";
 
 type Props = {

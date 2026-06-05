@@ -1,3 +1,16 @@
+/**
+ * SettingsScreen — 설정 화면
+ *
+ * ## 개요
+ * 할일 화면 우상단 설정 아이콘을 탭하면 진입하는 설정 전체 화면 컴포넌트.
+ * 할일 카테고리 목록을 관리하는 기능을 제공한다.
+ *
+ * ## 주요 기능
+ * - 카테고리 순서 변경 (드래그 또는 버튼)
+ * - 카테고리 숨기기 / 숨김 해제 (숨긴 카테고리는 별도 섹션에서 관리)
+ * - 카테고리 삭제 (ConfirmPopup으로 확인)
+ * - 카테고리 이름 변경 (CategoryRenameSheet 바텀시트 연동)
+ */
 import { useRef, useState } from "react";
 import CategoryRenameSheet from "./CategoryRenameSheet";
 import ConfirmPopup from "./ConfirmPopup";
@@ -115,14 +128,14 @@ export default function SettingsScreen({
 
   return (
     <div
-      className="fixed inset-0 z-[70] bg-[#262626] flex flex-col items-stretch"
+      className="fixed inset-0 z-[70] bg-[var(--color-bg-weak)] flex flex-col items-stretch"
       data-name="settings-screen"
     >
       {/* Status Bar */}
       <div className="h-[42px] relative w-full shrink-0">
         <div className="absolute h-[22px] left-[29.5px] top-[10px]">
           <p
-            className="font-['SF_Pro:Medium',sans-serif] font-[510] text-[#f9f9fa] text-[15px] tracking-[-0.165px] whitespace-nowrap"
+            className="font-['SF_Pro:Medium',sans-serif] font-[510] text-[var(--color-fg-text-weak)] text-[15px] tracking-[-0.165px] whitespace-nowrap"
             style={{ fontVariationSettings: "'wdth' 100" }}
           >
             9:41
@@ -157,7 +170,7 @@ export default function SettingsScreen({
             </div>
           </div>
         </button>
-        <p className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 font-['Pretendard:Medium',sans-serif] text-[#f9f9fa] text-[16px] leading-[24px]">
+        <p className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 font-['Pretendard:Medium',sans-serif] text-[var(--color-fg-text-weak)] text-[16px] leading-[24px]">
           편집
         </p>
       </div>
@@ -169,12 +182,12 @@ export default function SettingsScreen({
             <p className="font-['Pretendard:SemiBold',sans-serif] text-white text-[20px] leading-[28px]">
               아직 추가된 카테고리가 없어요
             </p>
-            <p className="font-['Pretendard:Medium',sans-serif] text-[#95999d] text-[16px] leading-[24px]">
+            <p className="font-['Pretendard:Medium',sans-serif] text-[var(--color-fg-text-subtle)] text-[16px] leading-[24px]">
               카테고리를 추가해 보세요
             </p>
           </div>
         ) : (
-          <p className="font-['Pretendard:SemiBold',sans-serif] text-[#f9f9fa] text-[20px] leading-[28px]">
+          <p className="font-['Pretendard:SemiBold',sans-serif] text-[var(--color-fg-text-weak)] text-[20px] leading-[28px]">
             카테고리 편집을 할 수 있어요
           </p>
         )}
@@ -192,7 +205,7 @@ export default function SettingsScreen({
                 <div
                   className={`size-[18px] rounded-[4px] flex items-center justify-center transition-colors ${
                     allSelected
-                      ? "bg-[#9678ff] border border-[#9678ff]"
+                      ? "bg-[var(--color-bg-brand)] border border-[var(--color-border-brand)]"
                       : "border border-[#d8d8d8]"
                   }`}
                 >
@@ -209,7 +222,7 @@ export default function SettingsScreen({
                   )}
                 </div>
               </div>
-              <span className="font-['Pretendard:Regular',sans-serif] text-[#f9f9fa] text-[14px] leading-[21px]">
+              <span className="font-['Pretendard:Regular',sans-serif] text-[var(--color-fg-text-weak)] text-[14px] leading-[21px]">
                 전체 선택
               </span>
             </button>
@@ -253,7 +266,7 @@ export default function SettingsScreen({
                       data-hidden="false"
                       style={
                         isDropTarget
-                          ? { borderTop: "2px solid #9678ff", marginTop: "-2px" }
+                          ? { borderTop: "2px solid var(--color-border-brand)", marginTop: "-2px" }
                           : undefined
                       }
                     >
@@ -267,7 +280,7 @@ export default function SettingsScreen({
                         <div
                           className={`size-[18px] rounded-[4px] flex items-center justify-center transition-colors ${
                             checked
-                              ? "bg-[#9678ff] border border-[#9678ff]"
+                              ? "bg-[var(--color-bg-brand)] border border-[var(--color-border-brand)]"
                               : "border border-[#d8d8d8]"
                           }`}
                         >
@@ -292,7 +305,7 @@ export default function SettingsScreen({
                       </button>
 
                       {/* Name */}
-                      <span className="font-['Pretendard:Medium',sans-serif] text-[#f9f9fa] text-[14px] leading-[21px] flex-1 min-w-0">
+                      <span className="font-['Pretendard:Medium',sans-serif] text-[var(--color-fg-text-weak)] text-[14px] leading-[21px] flex-1 min-w-0">
                         {cat}
                       </span>
 
@@ -339,9 +352,9 @@ export default function SettingsScreen({
                           fill="none"
                           aria-hidden="true"
                         >
-                          <rect x="2" y="4" width="12" height="1.5" rx="0.75" fill="#6d7278" />
-                          <rect x="2" y="7.25" width="12" height="1.5" rx="0.75" fill="#6d7278" />
-                          <rect x="2" y="10.5" width="12" height="1.5" rx="0.75" fill="#6d7278" />
+                          <rect x="2" y="4" width="12" height="1.5" rx="0.75" fill="var(--color-fg-text-disable)" />
+                          <rect x="2" y="7.25" width="12" height="1.5" rx="0.75" fill="var(--color-fg-text-disable)" />
+                          <rect x="2" y="10.5" width="12" height="1.5" rx="0.75" fill="var(--color-fg-text-disable)" />
                         </svg>
                       </button>
                     </div>
@@ -354,7 +367,7 @@ export default function SettingsScreen({
                 <>
                   <div className="mt-[16px] h-px w-full bg-[#404040]" aria-hidden="true" />
                   <p
-                    className="font-['Pretendard:Regular',sans-serif] text-[#95999d] text-[14px] leading-[21px] mt-[16px] px-[4px]"
+                    className="font-['Pretendard:Regular',sans-serif] text-[var(--color-fg-text-subtle)] text-[14px] leading-[21px] mt-[16px] px-[4px]"
                     data-name="hidden-section-header"
                   >
                     숨긴 할일
@@ -378,8 +391,8 @@ export default function SettingsScreen({
                             <div
                               className={`size-[18px] rounded-[4px] flex items-center justify-center transition-colors ${
                                 checked
-                                  ? "bg-[#9678ff] border border-[#9678ff]"
-                                  : "border border-[#6d7278]"
+                                  ? "bg-[var(--color-bg-brand)] border border-[var(--color-border-brand)]"
+                                  : "border border-[var(--color-fg-text-disable)]"
                               }`}
                             >
                               {checked && (
@@ -401,7 +414,7 @@ export default function SettingsScreen({
                               )}
                             </div>
                           </button>
-                          <span className="font-['Pretendard:Medium',sans-serif] text-[#95999d] text-[14px] leading-[21px] flex-1 min-w-0">
+                          <span className="font-['Pretendard:Medium',sans-serif] text-[var(--color-fg-text-subtle)] text-[14px] leading-[21px] flex-1 min-w-0">
                             {cat}
                           </span>
                           {/* No pencil/drag for hidden rows */}
@@ -426,7 +439,7 @@ export default function SettingsScreen({
                   : onHide(Array.from(selected));
                 setSelected(new Set());
               }}
-              className="flex-1 h-[56px] rounded-[12px] bg-[#6d7278] text-white text-[16px] leading-[24px] font-['Pretendard:Medium',sans-serif] active:bg-[#404040] transition-colors"
+              className="flex-1 h-[56px] rounded-[12px] bg-[var(--color-fg-text-disable)] text-white text-[16px] leading-[24px] font-['Pretendard:Medium',sans-serif] active:bg-[#404040] transition-colors"
               data-name={allSelectedAreHidden ? "settings-unhide" : "settings-hide"}
             >
               {allSelectedAreHidden ? "숨김 해제" : "감추기"}
@@ -444,7 +457,7 @@ export default function SettingsScreen({
                   setSelected(new Set());
                 }
               }}
-              className="flex-1 h-[56px] rounded-[12px] bg-[#9678ff] text-white text-[16px] leading-[24px] font-['Pretendard:Medium',sans-serif] active:bg-[#654ec1] transition-colors"
+              className="flex-1 h-[56px] rounded-[12px] bg-[var(--color-bg-brand)] text-white text-[16px] leading-[24px] font-['Pretendard:Medium',sans-serif] active:bg-[var(--color-bg-brand-pressed)] transition-colors"
               data-name="settings-delete"
             >
               삭제
@@ -455,7 +468,7 @@ export default function SettingsScreen({
             type="button"
             onClick={onBack}
             disabled
-            className="mt-[16px] h-[56px] rounded-[12px] bg-[#9678ff] text-white text-[16px] leading-[24px] font-['Pretendard:Medium',sans-serif] disabled:bg-[#333] disabled:text-[#6d7278] disabled:cursor-not-allowed"
+            className="mt-[16px] h-[56px] rounded-[12px] bg-[var(--color-bg-brand)] text-white text-[16px] leading-[24px] font-['Pretendard:Medium',sans-serif] disabled:bg-[var(--color-bg-muted)] disabled:text-[var(--color-fg-text-disable)] disabled:cursor-not-allowed"
             data-name="settings-done"
           >
             완료

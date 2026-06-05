@@ -1,3 +1,21 @@
+/**
+ * TodoScreen — 할일 화면
+ *
+ * ## 개요
+ * 앱의 할일 관리 메인 화면 컴포넌트.
+ * 카테고리별 할일 CRUD와 캘린더를 통한 날짜별 진행률 시각화를 제공한다.
+ *
+ * ## 주요 기능
+ * - 카테고리 칩 필터: 카테고리별 할일 필터링
+ * - 할일 CRUD: 추가·수정(TodoEditSheet)·삭제·완료 토글
+ * - 전체 뷰: 카테고리별 그룹으로 할일 목록 표시
+ * - SharedCalendar 연동: 완료 할일 비율로 아크 채움 비율(progressData) 계산하여 전달
+ * - 설정 아이콘: SettingsScreen으로 이동
+ * - 카테고리 추가: CategoryAddPopup, 전체 삭제: ConfirmPopup 연동
+ *
+ * ## 현재 상태 (TODO)
+ * - [ ] 서버 API 연동 (현재 로컬 state로만 관리)
+ */
 import { useState, useEffect, useRef } from "react";
 import svgPaths from "../../imports/할일-2/svg-sh8v04ggfj";
 import CategoryAddPopup from "./CategoryAddPopup";
@@ -27,7 +45,7 @@ function StatusBar() {
       </div>
       <div className="absolute h-[22px] left-[29.5px] top-[10px]">
         <p
-          className="font-['SF_Pro:Medium',sans-serif] font-[510] text-[#f9f9fa] text-[15px] tracking-[-0.165px] whitespace-nowrap"
+          className="font-['SF_Pro:Medium',sans-serif] font-[510] text-[var(--color-fg-text-weak)] text-[15px] tracking-[-0.165px] whitespace-nowrap"
           style={{ fontVariationSettings: "'wdth' 100" }}
         >
           9:41
@@ -50,7 +68,7 @@ function Header({
   return (
     <div className="h-[56px] shrink-0 w-full">
       <div className="flex flex-row items-center justify-between size-full pr-[12px] pl-[16px] py-[8px]">
-        <p className="font-['Pretendard:SemiBold',sans-serif] text-[#f9f9fa] text-[20px] leading-[28px]">
+        <p className="font-['Pretendard:SemiBold',sans-serif] text-[var(--color-fg-text-weak)] text-[20px] leading-[28px]">
           할일
         </p>
 
@@ -306,7 +324,7 @@ export default function TodoScreen({
   const renderActiveRow = (todo: TodoItem) => (
     <div
       key={todo.id}
-      className="shrink-0 bg-[#333] rounded-[8px] h-[40px] flex items-center gap-[8px] px-[12px] cursor-text"
+      className="shrink-0 bg-[var(--color-bg-muted)] rounded-[8px] h-[40px] flex items-center gap-[8px] px-[12px] cursor-text"
       onClick={(e) => {
         if ((e.target as HTMLElement).closest("button")) return;
         (e.currentTarget.querySelector("input") as HTMLInputElement)?.focus();
@@ -324,7 +342,7 @@ export default function TodoScreen({
         aria-disabled={!todo.text.trim()}
         className="size-[24px] flex items-center justify-center shrink-0"
       >
-        <div className="size-[18px] rounded-[4px] border border-[#6d7278]" />
+        <div className="size-[18px] rounded-[4px] border border-[var(--color-fg-text-disable)]" />
       </button>
       <input
         type="text"
@@ -347,7 +365,7 @@ export default function TodoScreen({
             removeTodo(todo.id);
           }
         }}
-        className="flex-1 min-w-0 bg-transparent outline-none border-none font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[#f9f9fa] placeholder:text-[#b6b8b9] cursor-text"
+        className="flex-1 min-w-0 bg-transparent outline-none border-none font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-weak)] placeholder:text-[var(--color-fg-text-muted)] cursor-text"
         data-name="todo-input"
       />
       {todo.text.trim() && (
@@ -372,10 +390,10 @@ export default function TodoScreen({
   );
 
   return (
-    <div className="bg-[#262626] h-full w-full relative overflow-clip" data-name="할일">
+    <div className="bg-[var(--color-bg-weak)] h-full w-full relative overflow-clip" data-name="할일">
       {/* Header block: rounded bottom corners, contains status / title / calendar */}
       <div
-        className="absolute left-0 top-0 w-full bg-[#262626] flex flex-col items-start rounded-bl-[16px] rounded-br-[16px]"
+        className="absolute left-0 top-0 w-full bg-[var(--color-bg-weak)] flex flex-col items-start rounded-bl-[16px] rounded-br-[16px]"
         style={{ filter: "drop-shadow(0px 4px 6px rgba(109,114,120,0.16))" }}
       >
         <StatusBar />
@@ -433,13 +451,13 @@ export default function TodoScreen({
                 onClick={() => setActiveCategory("전체")}
                 className={`h-[32px] px-[12px] py-[6px] rounded-[36px] shrink-0 inline-flex items-center justify-center transition-colors ${
                   activeCategory === "전체"
-                    ? "bg-[#333] border border-[#b6b8b9]"
-                    : "border border-[#6d7278] bg-transparent"
+                    ? "bg-[var(--color-bg-muted)] border border-[var(--color-fg-text-muted)]"
+                    : "border border-[var(--color-fg-text-disable)] bg-transparent"
                 }`}
               >
                 <span
                   className={`font-['Pretendard:Medium',sans-serif] text-[14px] whitespace-nowrap ${
-                    activeCategory === "전체" ? "text-white" : "text-[#b6b8b9]"
+                    activeCategory === "전체" ? "text-white" : "text-[var(--color-fg-text-muted)]"
                   }`}
                 >
                   카테고리 전체
@@ -452,13 +470,13 @@ export default function TodoScreen({
                   onClick={() => setActiveCategory(cat)}
                   className={`h-[32px] px-[12px] py-[6px] rounded-[36px] shrink-0 inline-flex items-center justify-center transition-colors ${
                     activeCategory === cat
-                      ? "bg-[#333] border border-[#b6b8b9]"
-                      : "border border-[#6d7278] bg-transparent"
+                      ? "bg-[var(--color-bg-muted)] border border-[var(--color-fg-text-muted)]"
+                      : "border border-[var(--color-fg-text-disable)] bg-transparent"
                   }`}
                 >
                   <span
                     className={`font-['Pretendard:Medium',sans-serif] text-[14px] whitespace-nowrap ${
-                      activeCategory === cat ? "text-white" : "text-[#b6b8b9]"
+                      activeCategory === cat ? "text-white" : "text-[var(--color-fg-text-muted)]"
                     }`}
                   >
                     {cat}
@@ -470,7 +488,7 @@ export default function TodoScreen({
 
           {/* "편집" button fixed to the right — opens SettingsScreen */}
           <div
-            className="absolute bg-[#262626] flex gap-[0] h-[48px] items-center pl-[8px] pr-[16px] right-0 top-0"
+            className="absolute bg-[var(--color-bg-weak)] flex gap-[0] h-[48px] items-center pl-[8px] pr-[16px] right-0 top-0"
             data-name="fixed"
           >
             <button
@@ -483,11 +501,11 @@ export default function TodoScreen({
               aria-label="카테고리 편집"
               data-name="Button/text button"
             >
-              <span className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[#f9f9fa]">
+              <span className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-weak)]">
                 편집
               </span>
               <svg className="size-[16px] shrink-0" fill="none" viewBox="0 0 24 24">
-                <path d={svgPaths.p1c54e880} fill="#f9f9fa" />
+                <path d={svgPaths.p1c54e880} fill="var(--color-fg-text-weak)" />
               </svg>
             </button>
           </div>
@@ -497,7 +515,7 @@ export default function TodoScreen({
             inner list's overflow-y-auto actually clips inside the viewport. */}
         <div className="px-[16px] mt-[8px] flex-1 min-h-0 flex flex-col">
           <div className="shrink-0 px-[12px] flex items-center h-[36px]">
-            <p className="font-['Pretendard:Medium',sans-serif] text-[#f9f9fa] text-[14px] leading-[21px]">
+            <p className="font-['Pretendard:Medium',sans-serif] text-[var(--color-fg-text-weak)] text-[14px] leading-[21px]">
               {activeCategory === "전체" ? "카테고리 전체" : activeCategory}
             </p>
           </div>
@@ -536,13 +554,13 @@ export default function TodoScreen({
                   <button
                     type="button"
                     onClick={addTodo}
-                    className="shrink-0 bg-[#333] rounded-[8px] h-[40px] flex items-center gap-[8px] px-[12px] active:bg-[#404040] transition-colors"
+                    className="shrink-0 bg-[var(--color-bg-muted)] rounded-[8px] h-[40px] flex items-center gap-[8px] px-[12px] active:bg-[#404040] transition-colors"
                     data-name="todo-empty"
                   >
                     <div className="size-[24px] flex items-center justify-center shrink-0">
-                      <div className="size-[18px] rounded-[4px] border border-[#6d7278]" />
+                      <div className="size-[18px] rounded-[4px] border border-[var(--color-fg-text-disable)]" />
                     </div>
-                    <p className="font-['Pretendard:Regular',sans-serif] text-[#95999d] text-[14px] leading-[21px]">
+                    <p className="font-['Pretendard:Regular',sans-serif] text-[var(--color-fg-text-subtle)] text-[14px] leading-[21px]">
                       할일을 추가해 보세요
                     </p>
                   </button>
@@ -559,7 +577,7 @@ export default function TodoScreen({
                   className="shrink-0 mt-[16px] flex items-center justify-between px-[4px]"
                   data-name="completed-header"
                 >
-                  <p className="font-['Pretendard:Medium',sans-serif] text-[#f9f9fa] text-[14px] leading-[21px]">
+                  <p className="font-['Pretendard:Medium',sans-serif] text-[var(--color-fg-text-weak)] text-[14px] leading-[21px]">
                     완료
                   </p>
                   <button
@@ -568,7 +586,7 @@ export default function TodoScreen({
                     className="flex items-center gap-[2px] active:opacity-70 transition-opacity"
                     data-name="clear-completed"
                   >
-                    <span className="font-['Pretendard:Medium',sans-serif] text-[#f9f9fa] text-[14px] leading-[21px]">
+                    <span className="font-['Pretendard:Medium',sans-serif] text-[var(--color-fg-text-weak)] text-[14px] leading-[21px]">
                       전체 삭제
                     </span>
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -584,7 +602,7 @@ export default function TodoScreen({
                 {completedTodos.map((todo) => (
                   <div
                     key={todo.id}
-                    className="shrink-0 bg-[#333] rounded-[8px] h-[40px] flex items-center gap-[8px] px-[12px]"
+                    className="shrink-0 bg-[var(--color-bg-muted)] rounded-[8px] h-[40px] flex items-center gap-[8px] px-[12px]"
                     data-name="todo-row-done"
                   >
                     <button
@@ -593,14 +611,14 @@ export default function TodoScreen({
                       aria-label="완료 취소"
                       className="size-[24px] flex items-center justify-center shrink-0"
                     >
-                      <div className="size-[18px] rounded-[4px] flex items-center justify-center bg-[#9678ff]">
+                      <div className="size-[18px] rounded-[4px] flex items-center justify-center bg-[var(--color-bg-brand)]">
                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
                           <path d="M1.5 5.2L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </div>
                     </button>
                     <p
-                      className="flex-1 min-w-0 font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[#6d7278] line-through overflow-hidden whitespace-nowrap text-ellipsis"
+                      className="flex-1 min-w-0 font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-disable)] line-through overflow-hidden whitespace-nowrap text-ellipsis"
                       title={todo.text}
                     >
                       {todo.text || " "}
@@ -616,9 +634,9 @@ export default function TodoScreen({
                       aria-label="더보기"
                     >
                       <svg width="16" height="4" viewBox="0 0 16 4" fill="none">
-                        <circle cx="2" cy="2" r="1.5" fill="#6D7278" />
-                        <circle cx="8" cy="2" r="1.5" fill="#6D7278" />
-                        <circle cx="14" cy="2" r="1.5" fill="#6D7278" />
+                        <circle cx="2" cy="2" r="1.5" fill="var(--color-fg-text-disable)" />
+                        <circle cx="8" cy="2" r="1.5" fill="var(--color-fg-text-disable)" />
+                        <circle cx="14" cy="2" r="1.5" fill="var(--color-fg-text-disable)" />
                       </svg>
                     </button>
                   </div>
@@ -639,14 +657,14 @@ export default function TodoScreen({
             <button
               type="button"
               onClick={() => setSelectedDate(null)}
-              className="pointer-events-auto flex gap-[4px] h-[40px] items-center pl-[12px] pr-[16px] py-[12px] bg-white border border-[#efeff0] rounded-full active:opacity-80 transition-opacity"
+              className="pointer-events-auto flex gap-[4px] h-[40px] items-center pl-[12px] pr-[16px] py-[12px] bg-white border border-[var(--color-border-weak)] rounded-full active:opacity-80 transition-opacity"
               style={{ boxShadow: "0px 4px 6px rgba(0,0,0,0.32)" }}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M13 8C13 10.76 10.76 13 8 13C5.24 13 3 10.76 3 8C3 5.24 5.24 3 8 3C9.45 3 10.76 3.6 11.72 4.56" stroke="#333" strokeWidth="1.4" strokeLinecap="round"/>
-                <path d="M10.5 2L12 4.5L9.5 5" stroke="#333" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M13 8C13 10.76 10.76 13 8 13C5.24 13 3 10.76 3 8C3 5.24 5.24 3 8 3C9.45 3 10.76 3.6 11.72 4.56" stroke="var(--color-bg-muted)" strokeWidth="1.4" strokeLinecap="round"/>
+                <path d="M10.5 2L12 4.5L9.5 5" stroke="var(--color-bg-muted)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              <span className="font-['Pretendard:Medium',sans-serif] text-[#333] text-[14px] leading-[21px] whitespace-nowrap">
+              <span className="font-['Pretendard:Medium',sans-serif] text-[var(--color-bg-muted)] text-[14px] leading-[21px] whitespace-nowrap">
                 오늘 날짜로
               </span>
             </button>
@@ -665,7 +683,7 @@ export default function TodoScreen({
                   );
                   setSelectedDate(null);
                 }}
-                className="pointer-events-auto flex gap-[4px] h-[40px] items-center pl-[12px] pr-[16px] py-[12px] bg-[#9678FF] rounded-full active:opacity-80 transition-opacity"
+                className="pointer-events-auto flex gap-[4px] h-[40px] items-center pl-[12px] pr-[16px] py-[12px] bg-[var(--color-bg-brand)] rounded-full active:opacity-80 transition-opacity"
                 style={{ boxShadow: "0px 4px 6px rgba(0,0,0,0.32)" }}
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -701,7 +719,7 @@ export default function TodoScreen({
           />
           {/* 메뉴 카드 — 버튼 바로 하단, left/top 기준 */}
           <div
-            className="fixed z-[61] bg-[#333] rounded-[12px] p-[4px] flex flex-col gap-[4px] min-w-[120px]"
+            className="fixed z-[61] bg-[var(--color-bg-muted)] rounded-[12px] p-[4px] flex flex-col gap-[4px] min-w-[120px]"
             style={{
               right: todoMenu.x,
               top: todoMenu.y + 4,
@@ -733,7 +751,7 @@ export default function TodoScreen({
                   onClick={() => postponeTodo(todoMenu.id)}
                   className="rounded-[8px] px-[12px] py-[8px] text-left w-full active:opacity-70 transition-opacity"
                 >
-                  <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-[#9678FF]">
+                  <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-[var(--color-fg-text-brand)]">
                     오늘로 미루기
                   </p>
                 </button>
@@ -765,7 +783,7 @@ export default function TodoScreen({
           />
           {/* 메뉴 카드 */}
           <div
-            className="fixed z-[61] bg-[#333] rounded-[12px] p-[4px] flex flex-col gap-[4px] min-w-[160px]"
+            className="fixed z-[61] bg-[var(--color-bg-muted)] rounded-[12px] p-[4px] flex flex-col gap-[4px] min-w-[160px]"
             style={{
               right: editMenu.right,
               top: editMenu.top,
@@ -819,7 +837,7 @@ export default function TodoScreen({
 
       {/* 할일 통계 화면 */}
       {showStats && (
-        <div className="absolute inset-0 z-[40] bg-[#262626]">
+        <div className="absolute inset-0 z-[40] bg-[var(--color-bg-weak)]">
           <TodoStatsScreen onBack={() => setShowStats(false)} />
         </div>
       )}

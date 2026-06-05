@@ -1,3 +1,18 @@
+/**
+ * CharacterChangeSheet — 캐릭터 변경 바텀시트
+ *
+ * ## 개요
+ * 타이머 설정 바텀시트에서 "캐릭터 변경" 버튼을 탭했을 때 표시되는 바텀시트 컴포넌트.
+ * 사용 가능한 캐릭터 목록을 표시하고 선택을 변경할 수 있다.
+ *
+ * ## 주요 기능
+ * - 캐릭터 선택 목록 표시 및 현재 선택 상태 강조
+ * - 선택 변경 후 onSelect 콜백으로 부모에게 전달
+ * - 취소/닫기 시 onClose 콜백 호출
+ *
+ * ## 현재 상태 (TODO)
+ * - [ ] localhost:3845 에셋 URL을 로컬 import 방식으로 교체 필요
+ */
 import { useState } from "react";
 
 const imgCharacter1 = "http://localhost:3845/assets/931ff6cd511628648ae3acc87aa0014ca6f5f7b7.png";

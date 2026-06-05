@@ -1,3 +1,15 @@
+/**
+ * TimerSettingsSheet — 타이머 설정 바텀시트
+ *
+ * ## 개요
+ * 타이머 화면 사이드의 설정 버튼을 탭하면 표시되는 바텀시트 컴포넌트.
+ * 타이머 관련 세부 설정을 조정할 수 있다.
+ *
+ * ## 주요 기능
+ * - 허용 앱 ON/OFF 토글 설정
+ * - 뽀모도로 모드 ON/OFF 토글 (ON 시 PomodoroBottomSheet 표시)
+ * - "캐릭터 변경" 버튼: CharacterChangeSheet 바텀시트 연결
+ */
 import { useState } from "react";
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {

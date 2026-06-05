@@ -1,3 +1,19 @@
+/**
+ * YesterdayScreen — 어제의 나 화면
+ *
+ * ## 개요
+ * 지난 학습 기록과 비교 정보를 제공하는 화면 컴포넌트.
+ * 어제와 지난주 오늘의 공부 시간을 비교하고 역대 최고 기록을 표시한다.
+ *
+ * ## 주요 기능
+ * - 지난주 오늘과의 공부 시간 비교 표시
+ * - 역대 최고 기록 카드 표시
+ * - 주간 비교 카드: 이번 주 vs 지난주 학습량 시각화
+ * - 헤더 스크롤 애니메이션: 스크롤 다운 시 헤더가 위로 슬라이드 아웃
+ *
+ * ## 현재 상태 (TODO)
+ * - [ ] 서버 API 연동 (현재 더미 데이터 사용)
+ */
 import { useState, useEffect, useRef } from "react";
 import BottomNav from "./BottomNav";
 
@@ -33,7 +49,7 @@ function Tooltip({
       {/* 둥근 사각형 본체 */}
       <div
         style={{
-          background: "#9678ff",
+          background: "var(--color-bg-brand)",
           borderRadius: 10,
           height: 20,
           padding: "0 10px",
@@ -52,7 +68,7 @@ function Tooltip({
           height: 0,
           borderLeft: "4.5px solid transparent",
           borderRight: "4.5px solid transparent",
-          borderTop: "5px solid #9678ff",
+          borderTop: "5px solid var(--color-bg-brand)",
           marginTop: 0,
         }}
       />
@@ -81,7 +97,7 @@ function BarRow({
   animated: boolean;
   delay?: number;
 }) {
-  const isPurple = barColor === "bg-[#9678ff]";
+  const isPurple = barColor === "bg-[var(--color-bg-brand)]";
 
   return (
     <div className="flex gap-[12px] items-center relative shrink-0 w-full">
@@ -154,12 +170,12 @@ export default function YesterdayScreen({
   };
 
   return (
-    <div className="bg-[#262626] h-full w-full relative flex flex-col">
+    <div className="bg-[var(--color-bg-weak)] h-full w-full relative flex flex-col">
 
       {/* 상태바 */}
       <div className="h-[42px] relative w-full shrink-0">
         <p
-          className="absolute font-['SF_Pro:Medium',sans-serif] font-[510] text-[#f9f9fa] text-[15px] tracking-[-0.165px] whitespace-nowrap"
+          className="absolute font-['SF_Pro:Medium',sans-serif] font-[510] text-[var(--color-fg-text-weak)] text-[15px] tracking-[-0.165px] whitespace-nowrap"
           style={{ fontVariationSettings: "'wdth' 100", left: 29.5, top: "calc(50% - 9px)" }}
         >
           9:41
@@ -176,7 +192,7 @@ export default function YesterdayScreen({
         }}
       >
         <div className="flex h-[56px] items-center px-[16px] py-[8px] w-full">
-          <p className="font-['Pretendard:SemiBold',sans-serif] leading-[28px] text-[20px] text-[#f9f9fa] whitespace-nowrap">
+          <p className="font-['Pretendard:SemiBold',sans-serif] leading-[28px] text-[20px] text-[var(--color-fg-text-weak)] whitespace-nowrap">
             어제의 나
           </p>
         </div>
@@ -193,44 +209,44 @@ export default function YesterdayScreen({
 
           {/* ── 카드 1: 지난주 오늘 비교 ─────────────────────────── */}
           <div
-            className="bg-[#333] rounded-[12px] px-[20px] py-[16px] flex flex-col gap-[28px]"
+            className="bg-[var(--color-bg-muted)] rounded-[12px] px-[20px] py-[16px] flex flex-col gap-[28px]"
             style={{ boxShadow: "0px 4px 12px 0px rgba(110,109,120,0.08)" }}
           >
             <p className="font-['Pretendard:SemiBold',sans-serif] text-[18px] leading-[27px] text-white">
               지난주 오늘보다{" "}
               <br />
-              <span className="text-[#9678ff]">13분</span> 더 공부했어요
+              <span className="text-[var(--color-fg-text-brand)]">13분</span> 더 공부했어요
             </p>
 
             <div className="relative w-full" style={{ paddingTop: 47 }}>
               <Tooltip label="+13분" barEndPx={44 + 68} visible={pillsVisible} />
               <div className="flex flex-col gap-[12px]">
-                <BarRow label="오늘"   labelColor="text-[#9678ff]" barColor="bg-[#9678ff]" barWidth={68}  value="60분"  animated={barsAnimated} delay={0} />
-                <BarRow label="지난주" labelColor="text-[#b6b8b9]" barColor="bg-[#b6b8b9]" barWidth={27}  value="47분"  animated={barsAnimated} />
+                <BarRow label="오늘"   labelColor="text-[var(--color-fg-text-brand)]" barColor="bg-[var(--color-bg-brand)]" barWidth={68}  value="60분"  animated={barsAnimated} delay={0} />
+                <BarRow label="지난주" labelColor="text-[var(--color-fg-text-muted)]" barColor="bg-[var(--color-fg-text-muted)]" barWidth={27}  value="47분"  animated={barsAnimated} />
               </div>
             </div>
           </div>
 
           {/* ── 카드 2: 역대 최고 기록 ───────────────────────────── */}
           <div
-            className="bg-[#333] rounded-[12px] px-[20px] py-[16px] flex flex-col gap-[28px]"
+            className="bg-[var(--color-bg-muted)] rounded-[12px] px-[20px] py-[16px] flex flex-col gap-[28px]"
             style={{ boxShadow: "0px 4px 12px 0px rgba(110,109,120,0.08)" }}
           >
             <p className="font-['Pretendard:SemiBold',sans-serif] text-[18px] leading-[27px] text-white">
               역대 최고 기록까지{" "}
               <br />
-              <span className="text-[#9678ff]">48분</span> 남았어요
+              <span className="text-[var(--color-fg-text-brand)]">48분</span> 남았어요
             </p>
 
             <div className="relative w-full" style={{ paddingTop: 47 }}>
               <Tooltip label="3시간 12분" barEndPx={44 + 155} visible={pillsVisible} />
-              <BarRow label="오늘" labelColor="text-[#9678ff]" barColor="bg-[#9678ff]" barWidth={155} value="4시간 32분" animated={barsAnimated} delay={60} />
+              <BarRow label="오늘" labelColor="text-[var(--color-fg-text-brand)]" barColor="bg-[var(--color-bg-brand)]" barWidth={155} value="4시간 32분" animated={barsAnimated} delay={60} />
             </div>
           </div>
 
           {/* ── 카드 3: 이번주 vs 지난주 ─────────────────────────── */}
           <div
-            className="bg-[#333] rounded-[12px] px-[20px] py-[16px] flex flex-col gap-[28px]"
+            className="bg-[var(--color-bg-muted)] rounded-[12px] px-[20px] py-[16px] flex flex-col gap-[28px]"
             style={{ boxShadow: "0px 4px 12px 0px rgba(110,109,120,0.08)" }}
           >
             <p className="font-['Pretendard:SemiBold',sans-serif] text-[18px] leading-[27px] text-white">
@@ -242,8 +258,8 @@ export default function YesterdayScreen({
             <div className="relative w-full" style={{ paddingTop: 47 }}>
               <Tooltip label="-32%" barEndPx={44 + 68} visible={pillsVisible} />
               <div className="flex flex-col gap-[12px]">
-                <BarRow label="이번주" labelColor="text-[#9678ff]" barColor="bg-[#9678ff]" barWidth={68}  value="평균 28분" animated={barsAnimated} delay={120} />
-                <BarRow label="지난주" labelColor="text-[#b6b8b9]" barColor="bg-[#b6b8b9]" barWidth={138} value="평균 41분" animated={barsAnimated} />
+                <BarRow label="이번주" labelColor="text-[var(--color-fg-text-brand)]" barColor="bg-[var(--color-bg-brand)]" barWidth={68}  value="평균 28분" animated={barsAnimated} delay={120} />
+                <BarRow label="지난주" labelColor="text-[var(--color-fg-text-muted)]" barColor="bg-[var(--color-fg-text-muted)]" barWidth={138} value="평균 41분" animated={barsAnimated} />
               </div>
             </div>
           </div>
@@ -251,30 +267,30 @@ export default function YesterdayScreen({
           {/* ── 카드 4: 집중 골드 타임 + 평균 지속 시간 (나란히) ── */}
           <div className="flex gap-[8px]">
             <div
-              className="bg-[#333] rounded-[12px] px-[20px] py-[16px] flex-1 flex flex-col gap-[4px]"
+              className="bg-[var(--color-bg-muted)] rounded-[12px] px-[20px] py-[16px] flex-1 flex flex-col gap-[4px]"
               style={{ boxShadow: "0px 4px 12px 0px rgba(110,109,120,0.08)" }}
             >
-              <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[#b6b8b9]">집중 골드 타임</p>
+              <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-muted)]">집중 골드 타임</p>
               <p className="font-['Pretendard:SemiBold',sans-serif] text-[18px] leading-[27px] text-white">오후 3~5시</p>
-              <p className="font-['Pretendard:SemiBold',sans-serif] text-[12px] leading-[18px] text-[#b6b8b9] whitespace-nowrap">화요일이 가장 강해요</p>
+              <p className="font-['Pretendard:SemiBold',sans-serif] text-[12px] leading-[18px] text-[var(--color-fg-text-muted)] whitespace-nowrap">화요일이 가장 강해요</p>
             </div>
             <div
-              className="bg-[#333] rounded-[12px] px-[20px] py-[16px] flex-1 flex flex-col gap-[4px]"
+              className="bg-[var(--color-bg-muted)] rounded-[12px] px-[20px] py-[16px] flex-1 flex flex-col gap-[4px]"
               style={{ boxShadow: "0px 4px 12px 0px rgba(110,109,120,0.08)" }}
             >
-              <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[#b6b8b9]">평균 지속 시간</p>
+              <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-muted)]">평균 지속 시간</p>
               <p className="font-['Pretendard:SemiBold',sans-serif] text-[18px] leading-[27px] text-white">23분</p>
-              <p className="font-['Pretendard:SemiBold',sans-serif] text-[12px] leading-[18px] text-[#b6b8b9] whitespace-nowrap">최장 기록 41분</p>
+              <p className="font-['Pretendard:SemiBold',sans-serif] text-[12px] leading-[18px] text-[var(--color-fg-text-muted)] whitespace-nowrap">최장 기록 41분</p>
             </div>
           </div>
 
           {/* ── 카드 5: 연도별 평균 바 차트 ──────────────────────── */}
           <div
-            className="bg-[#333] rounded-[12px] px-[20px] py-[17px] flex flex-col gap-[28px]"
+            className="bg-[var(--color-bg-muted)] rounded-[12px] px-[20px] py-[17px] flex flex-col gap-[28px]"
             style={{ boxShadow: "0px 4px 12px 0px rgba(110,109,120,0.08)" }}
           >
             <div className="flex flex-col gap-[4px]">
-              <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[#b6b8b9]">연도별 평균</p>
+              <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-muted)]">연도별 평균</p>
               <p className="font-['Pretendard:SemiBold',sans-serif] text-[18px] leading-[27px] text-white">
                 1년 전 오늘의 나는
                 <br />
@@ -286,18 +302,18 @@ export default function YesterdayScreen({
             <div className="flex gap-[26px] items-end justify-center">
               {/* 2024 */}
               <div className="flex flex-col gap-[12px] items-center" style={{ width: 24 }}>
-                <div className="bg-[#b6b8b9] opacity-20 rounded-t-[4px] w-full" style={{ height: 100 }} />
-                <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-[#b6b8b9] text-center">24</p>
+                <div className="bg-[var(--color-fg-text-muted)] opacity-20 rounded-t-[4px] w-full" style={{ height: 100 }} />
+                <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-[var(--color-fg-text-muted)] text-center">24</p>
               </div>
               {/* 2025 */}
               <div className="flex flex-col gap-[12px] items-center" style={{ width: 24 }}>
-                <div className="bg-[#b6b8b9] opacity-20 rounded-t-[4px] w-full" style={{ height: 125 }} />
-                <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-[#b6b8b9] text-center">25</p>
+                <div className="bg-[var(--color-fg-text-muted)] opacity-20 rounded-t-[4px] w-full" style={{ height: 125 }} />
+                <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-[var(--color-fg-text-muted)] text-center">25</p>
               </div>
               {/* 2026 (현재, 보라색) */}
               <div className="flex flex-col gap-[12px] items-center" style={{ width: 24 }}>
-                <div className="bg-[#9678ff] rounded-t-[4px] w-full" style={{ height: 100 }} />
-                <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-[#9678ff] text-center">26</p>
+                <div className="bg-[var(--color-bg-brand)] rounded-t-[4px] w-full" style={{ height: 100 }} />
+                <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-[var(--color-fg-text-brand)] text-center">26</p>
               </div>
             </div>
           </div>
