@@ -1,0 +1,515 @@
+import { useState, useEffect, useRef } from "react";
+import BottomNav from "./BottomNav";
+import imgInfoIcon from "../../imports/랭킹아이콘/info_circle.svg";
+// 티어 뱃지 이미지 — 로컬 에셋 (Figma MCP URL 만료 대비)
+import imgTierActive4   from "../../imports/랭킹티어/tier_active_4.svg";
+import imgTierActive3   from "../../imports/랭킹티어/tier_active_3.svg";
+import imgTierActive2   from "../../imports/랭킹티어/tier_active_2.svg";
+import imgTierActive1   from "../../imports/랭킹티어/tier_active_1.svg";
+import imgTierInactive4 from "../../imports/랭킹티어/tier_inactive_4.svg";
+import imgTierInactive3 from "../../imports/랭킹티어/tier_inactive_3.svg";
+import imgTierInactive2 from "../../imports/랭킹티어/tier_inactive_2.svg";
+import imgTierInactive1 from "../../imports/랭킹티어/tier_inactive_1.svg";
+
+// ── Assets ────────────────────────────────────────────────────────────────────
+const imgSymbol = "http://localhost:3845/assets/390e5254479589bfd886e998b9c2b3a3390f0b82.svg";
+
+// ── Avatar ────────────────────────────────────────────────────────────────────
+// Unsplash 고정 photo ID 목록 — 사람 / 동물 / 풍경 믹스
+const UNSPLASH_IDS = [
+  "1507003211169-0a1dd7228f2d", // 사람
+  "1574158622682-e719686abd98", // 고양이
+  "1506905925346-21bda4d32df4", // 산 풍경
+  "1494790108755-2616b612b47c", // 사람
+  "1552053831-71594a27632d",    // 햄스터
+  "1469474968028-56623f02e42e", // 노을 풍경
+  "1500648767791-00dcc994a43e", // 사람
+  "1561037978-f4df0891b31e",    // 강아지
+  "1501854140801-50d01698950b", // 자연 풍경
+  "1438761681033-6461ffad8d80", // 사람
+  "1548247416-ec66f4900b2e",    // 고양이
+  "1426604966848-d7adac402bff", // 풍경
+  "1472099645785-5658abf4ff4e", // 사람
+  "1560807707-8cc77767d783",    // 강아지
+  "1448375240586-882707db888b", // 숲 풍경
+  "1531746020798-e6953c6e8e04", // 사람
+  "1583511655857-d19b40a7a54e", // 고양이
+  "1506744038136-46273834b3fb", // 호수 풍경
+  "1547425260-76bcadfb4f2c",    // 사람
+  "1587300003388-59208cc962cb", // 강아지
+];
+
+function avatarSrc(idx: number): string {
+  const id = UNSPLASH_IDS[idx % UNSPLASH_IDS.length];
+  return `https://images.unsplash.com/photo-${id}?w=100&h=100&fit=crop&crop=faces,center&auto=format`;
+}
+
+function Avatar({
+  idx,
+  size = 40,
+  className = "",
+}: {
+  idx: number;
+  size?: number;
+  className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div
+        className={`rounded-full shrink-0 bg-[#444] ${className}`}
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
+  return (
+    <img
+      alt=""
+      src={avatarSrc(idx)}
+      className={`rounded-full object-cover block shrink-0 ${className}`}
+      style={{ width: size, height: size }}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+// Tier badge images — active (보라색) vs inactive (어두운) 상태 분리
+// Active: size=m(100px) — Figma Component103 m 상태
+const ACTIVE_BADGE_IMG: Record<number, string> = {
+  4: imgTierActive4,
+  3: imgTierActive3,
+  2: imgTierActive2,
+  1: imgTierActive1,
+};
+// Inactive: size=sm(84px) — Figma Component103 sm 상태
+const INACTIVE_BADGE_IMG: Record<number, string> = {
+  4: imgTierInactive4,
+  3: imgTierInactive3,
+  2: imgTierInactive2,
+  1: imgTierInactive1,
+};
+
+// ── Time helpers ──────────────────────────────────────────────────────────────
+function timeToSecs(t: string): number {
+  const [h, m, s] = t.split(":").map(Number);
+  return h * 3600 + m * 60 + s;
+}
+function secsToTime(n: number): string {
+  const h = Math.floor(n / 3600);
+  const m = Math.floor((n % 3600) / 60);
+  const s = n % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+// ── Rank data ─────────────────────────────────────────────────────────────────
+type RankItem = { rank: number; avatarIdx: number; name: string; baseSecs: number; isMe?: boolean };
+
+const NAMES_T4 = ["규리규리구리","금지된자소서","틈섀","감사한포도42","얼렁떵땅","무주택세대주","새벽세시반","하루열두시간","졸린눈깜빡","공부왕찐천재","수능디데이100","밤새운보람","오늘도화이팅","집중력만렙","독서실단골","카페인중독자","눈뜨면공부","합격만기다려","도서관지박령","마지막스퍼트"];
+const NAMES_T3 = ["최상위권신화","불꽃공부맨","전교1등도전","수능만점자","독서왕","매일공부왕","집중의달인","새벽감성러","스터디리더","목표달성자","끝까지간다","성실한하루","포기란없다","빡공머신","야간자율학습","도전그자체","공부가좋아","시험지정복","오답노트달인","내일도화이팅"];
+const NAMES_T2 = ["전설의고수","신들린공부","최정상각","공부신","천재공부법","초집중모드","무한반복","완전이해","심화학습","기출마스터","오늘도최선","완벽한복습","개념왕","수학마스터","영어달인","국어의신","과학천재","사탐만렙","논리왕","철두철미"];
+
+function buildData(names: string[], startSecs: number, step: number, meIndex?: number): RankItem[] {
+  return names.map((name, i) => ({
+    rank: i + 1,
+    avatarIdx: i,
+    name,
+    baseSecs: Math.max(60, startSecs - i * step),
+    isMe: i === meIndex,
+  }));
+}
+
+// Pre-built tier rank lists (immutable)
+const TIER_DATA: Record<number, RankItem[]> = {
+  4: buildData(NAMES_T4, timeToSecs("05:34:05"), 800, 4),   // rank 5 = 나 (고2)
+  3: buildData(NAMES_T3, timeToSecs("08:45:20"), 950),
+  2: buildData(NAMES_T2, timeToSecs("11:20:15"), 1100, 3),  // rank 4 = 나 (클럽)
+};
+
+// 탭별 기본 조
+const TAB_DEFAULT_TIER: Record<"고2" | "클럽", number> = { "고2": 4, "클럽": 2 };
+
+// Motivational message per active tier
+const TIER_MSG: Record<number, string> = {
+  4: "45분만 더 달리면 3조로 올라가요",
+  3: "1시간만 더 달리면 2조로 올라가요",
+  2: "2시간만 더 달리면 1조로 올라가요",
+};
+
+// ── Carousel tiers ────────────────────────────────────────────────────────────
+const CAROUSEL_TIERS = [4, 3, 2] as const;
+type CarouselTier = typeof CAROUSEL_TIERS[number];
+const CAROUSEL_GAP  = 16;
+const CELL_SIZE     = 100; // 고정 셀 크기 — translateX 계산이 배지 크기에 독립적
+
+const EASE = "cubic-bezier(0.4, 0, 0.2, 1)"; // Material Design standard
+const DUR  = "0.35s";
+
+// ── TierBadge (carousel item) ─────────────────────────────────────────────────
+// 고정 100px 셀 안에 absolute로 배치 → 크기 변화가 레이아웃에 영향 없음
+function TierBadge({ tier, isActive, onClick }: { tier: number; isActive: boolean; onClick: () => void }) {
+  const size          = isActive ? 100 : 84;
+  const offset        = (CELL_SIZE - size) / 2; // 셀 안 중앙 정렬 offset
+  const imgSz         = isActive ? 68 : 56;
+  const imgL          = isActive ? 15 : 13.64;
+  const imgT          = isActive ? 5 : 3;
+  const pillTop       = isActive ? 62 : 48;
+  const pillH         = isActive ? 32 : 26.88;
+  const pillPx        = isActive ? 16 : 13.44;
+  const pillLeft      = isActive ? 5 : 3;
+  const pillBg        = isActive ? "#f9f9fa" : "#333";
+  const pillTextColor = isActive ? "#262626" : "#6d7278";
+  const fs            = isActive ? 14 : 12;
+  const lh            = isActive ? "21px" : "18px";
+  const badgeImg      = isActive
+    ? (ACTIVE_BADGE_IMG[tier]   ?? ACTIVE_BADGE_IMG[4])
+    : (INACTIVE_BADGE_IMG[tier] ?? INACTIVE_BADGE_IMG[4]);
+
+  return (
+    <div
+      onClick={onClick}
+      className="absolute overflow-clip cursor-pointer"
+      style={{
+        left: offset, top: offset,
+        width: size, height: size,
+        transition: `left ${DUR} ${EASE}, top ${DUR} ${EASE}, width ${DUR} ${EASE}, height ${DUR} ${EASE}`,
+      }}
+    >
+      <img alt="" className="absolute max-w-none"
+        style={{ left: imgL, top: imgT, width: imgSz, height: imgSz }}
+        src={badgeImg}
+      />
+      <div className="absolute flex items-center justify-center rounded-full"
+        style={{
+          left: pillLeft, top: pillTop, height: pillH,
+          paddingLeft: pillPx, paddingRight: pillPx,
+          background: pillBg,
+          transition: `all ${DUR} ${EASE}`,
+        }}
+      >
+        <p className="font-['Pretendard:Medium',sans-serif] whitespace-nowrap"
+          style={{ fontSize: fs, lineHeight: lh, color: pillTextColor }}>
+          32,345명
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── TierCarousel ──────────────────────────────────────────────────────────────
+function TierCarousel({ activeTier, onChange }: { activeTier: number; onChange: (t: number) => void }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(375);
+  const touchStartX  = useRef<number | null>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setWidth(el.offsetWidth);
+    const ro = new ResizeObserver(() => setWidth(el.offsetWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const idx = CAROUSEL_TIERS.indexOf(activeTier as CarouselTier);
+
+  // translateX는 고정 CELL_SIZE 기준 → 배지 크기 변화에 완전히 독립
+  const widthBefore = idx * (CELL_SIZE + CAROUSEL_GAP);
+  const tx = width / 2 - widthBefore - CELL_SIZE / 2;
+
+  const goPrev = () => idx > 0 && onChange(CAROUSEL_TIERS[idx - 1]);
+  const goNext = () => idx < CAROUSEL_TIERS.length - 1 && onChange(CAROUSEL_TIERS[idx + 1]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full overflow-hidden"
+      style={{ height: CELL_SIZE + 10 }}
+      onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+      onTouchEnd={(e) => {
+        if (touchStartX.current === null) return;
+        const dx = touchStartX.current - e.changedTouches[0].clientX;
+        if (dx > 40) goNext();
+        else if (dx < -40) goPrev();
+        touchStartX.current = null;
+      }}
+    >
+      <div
+        className="flex"
+        style={{
+          gap: CAROUSEL_GAP,
+          transform: `translateX(${tx}px)`,
+          transition: `transform ${DUR} ${EASE}`,
+        }}
+      >
+        {CAROUSEL_TIERS.map((tier) => (
+          // 고정 100px 셀: 레이아웃 불변, 배지는 내부에서 absolute 애니메이션
+          <div
+            key={tier}
+            style={{ width: CELL_SIZE, height: CELL_SIZE, flexShrink: 0, position: "relative" }}
+          >
+            <TierBadge tier={tier} isActive={tier === activeTier} onClick={() => onChange(tier)} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── MeBadge ───────────────────────────────────────────────────────────────────
+function MeBadge() {
+  return (
+    <div className="bg-white flex items-center justify-center rounded-full shrink-0" style={{ width: 20, height: 20 }}>
+      <p className="font-['Pretendard:SemiBold',sans-serif] text-[10px] leading-[16px] text-[#262626] text-center">나</p>
+    </div>
+  );
+}
+
+// ── RankRow ───────────────────────────────────────────────────────────────────
+function RankRow({ item, tick }: { item: RankItem; tick: number }) {
+  return (
+    <div
+      className={`flex gap-[42px] items-center px-[12px] py-[8px] rounded-[12px] drop-shadow-[0px_4px_4px_rgba(110,109,120,0.04)] ${
+        item.isMe ? "bg-[#333]" : ""
+      }`}
+    >
+      {/* Left: rank + avatar + name */}
+      <div className="flex flex-1 gap-[8px] items-center min-w-0">
+        <div className="flex items-center justify-center shrink-0 w-[20px] h-[20px]">
+          <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-white w-full overflow-hidden text-ellipsis whitespace-nowrap">
+            {item.rank}
+          </p>
+        </div>
+        <Avatar size={40} idx={item.avatarIdx} />
+        <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-[#b6b8b9] overflow-hidden text-ellipsis whitespace-nowrap">
+          {item.name}
+        </p>
+        {item.isMe && <MeBadge />}
+      </div>
+      {/* Live timer */}
+      <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-white text-center whitespace-nowrap shrink-0 tabular-nums">
+        {secsToTime(item.baseSecs + tick)}
+      </p>
+    </div>
+  );
+}
+
+// ── RankingScreen ─────────────────────────────────────────────────────────────
+export default function RankingScreen({
+  onNavigateToTimer,
+  onNavigateToYesterday,
+  onNavigateToTodo,
+}: {
+  onNavigateToTimer?: () => void;
+  onNavigateToYesterday?: () => void;
+  onNavigateToTodo?: () => void;
+}) {
+  const [activeTab,     setActiveTab]     = useState<"고2" | "클럽">("고2");
+  // 탭마다 독립적인 활성 조를 기억
+  const [tierByTab,     setTierByTab]     = useState<Record<"고2" | "클럽", number>>(TAB_DEFAULT_TIER);
+  const [tick,          setTick]          = useState(0);
+  const [showGradeInfo, setShowGradeInfo] = useState(false);
+
+  const activeTier = tierByTab[activeTab];
+
+  // 1-second interval — all timers tick together
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const rankData   = TIER_DATA[activeTier] ?? TIER_DATA[4];
+  const msg        = TIER_MSG[activeTier]  ?? TIER_MSG[4];
+  // 내 항목 — 캐러셀 탐색 시에도 항상 표시되도록 탭의 기본 조에서 고정
+  const myTierData = TIER_DATA[TAB_DEFAULT_TIER[activeTab]] ?? TIER_DATA[4];
+  const meItem     = myTierData.find(item => item.isMe);
+
+  return (
+    <div className="bg-[#262626] h-full w-full flex flex-col relative">
+
+      {/* ── Status bar ── */}
+      <div className="h-[42px] relative shrink-0 w-full">
+        <div className="absolute h-[11.5px] right-[14.5px] top-[19px] w-[67px]">
+          <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgSymbol} />
+        </div>
+        <p
+          className="absolute font-['SF_Pro:Medium',sans-serif] font-[510] text-[#f9f9fa] text-[15px] tracking-[-0.165px] whitespace-nowrap"
+          style={{ fontVariationSettings: "'wdth' 100", left: 29.5, top: "calc(50% - 9px)" }}
+        >
+          9:41
+        </p>
+      </div>
+
+      {/* ── Header ── */}
+      <div className="h-[56px] shrink-0 flex items-center px-[12px] py-[8px]">
+        <div className="flex h-[36px] items-center px-[12px] py-[8px] rounded-[8px]">
+          <p className="font-['Pretendard:SemiBold',sans-serif] text-[#f9f9fa] text-[20px] leading-[28px] whitespace-nowrap">랭킹</p>
+        </div>
+      </div>
+
+      {/* ── Tabs ── */}
+      <div className="flex items-center px-[16px] shrink-0">
+        {(["고2", "클럽"] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => {
+              setActiveTab(tab);
+              // 탭 전환 시 해당 탭의 기본 조(나의 조)로 이동
+              setTierByTab(prev => ({ ...prev, [tab]: TAB_DEFAULT_TIER[tab] }));
+            }}
+            className={`flex-1 h-[40px] flex items-center justify-center px-[16px] py-[10px] transition-colors ${
+              activeTab === tab ? "border-b-2 border-[#f9f9fa]" : ""
+            }`}
+          >
+            <p className={`font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] whitespace-nowrap ${
+              activeTab === tab ? "text-[#f9f9fa]" : "text-[#b6b8b9]"
+            }`}>
+              {tab}
+            </p>
+          </button>
+        ))}
+      </div>
+
+      {/* ── Divider ── */}
+      <div className="bg-[#6d7278] h-px w-full shrink-0" />
+
+      {/* ── Tier section (fixed — does not scroll) ── */}
+      <div className="shrink-0 relative flex flex-col items-center py-[24px] gap-[8px]">
+
+        {/* Motivational text */}
+        <div className="flex gap-[4px] items-center justify-center px-[16px]">
+          <p className="font-['Pretendard:SemiBold',sans-serif] text-[20px] leading-[28px] text-white text-center">
+            {msg}
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowGradeInfo(true)}
+            className="relative shrink-0 cursor-pointer active:scale-90 transition-transform"
+            style={{ width: 20, height: 20 }}
+            aria-label="등급 안내 보기"
+          >
+            <div className="absolute" style={{ left: 1.67, top: 1.67, width: 16.667, height: 16.667 }}>
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgInfoIcon} />
+            </div>
+          </button>
+        </div>
+
+        {/* Tier carousel */}
+        <TierCarousel
+          activeTier={activeTier}
+          onChange={(t) => setTierByTab(prev => ({ ...prev, [activeTab]: t }))}
+        />
+
+        {/* My rank card — meItem 기반 동적 렌더링 */}
+        {meItem && (
+          <div className="bg-[#333] drop-shadow-[0px_4px_4px_rgba(110,109,120,0.04)] flex items-center px-[12px] py-[8px] rounded-[12px] mx-[16px] w-[calc(100%-32px)]">
+            <div className="flex flex-1 gap-[42px] items-center min-w-0">
+              <div className="flex flex-1 gap-[8px] items-center min-w-0">
+                <div className="flex flex-col items-center justify-center shrink-0 size-[20px] overflow-hidden">
+                  <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-white overflow-hidden text-ellipsis w-full whitespace-nowrap">
+                    {meItem.rank}
+                  </p>
+                </div>
+                <Avatar size={40} idx={meItem.avatarIdx} />
+                <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-white overflow-hidden text-ellipsis whitespace-nowrap">
+                  얼렁떵땅
+                </p>
+                <MeBadge />
+              </div>
+              <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-white text-center whitespace-nowrap shrink-0 tabular-nums">
+                {secsToTime(meItem.baseSecs + tick)}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Bottom fog */}
+        <div
+          className="pointer-events-none absolute bottom-0 left-0 right-0 h-[32px]"
+          style={{ background: "linear-gradient(to bottom, rgba(38,38,38,0) 0%, #262626 100%)" }}
+        />
+      </div>
+
+      {/* ── Rank list (scrollable) ── */}
+      <div
+        className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden"
+        style={{ scrollbarWidth: "none" }}
+      >
+        <div className="flex flex-col gap-[4px] px-[14px] py-[8px]">
+          {rankData.map((item) => (
+            <RankRow key={item.rank} item={item} tick={tick} />
+          ))}
+        </div>
+      </div>
+
+      {/* ── Bottom nav ── */}
+      <BottomNav
+        activeTab="timer"
+        onTimer={onNavigateToTimer}
+        onYesterday={onNavigateToYesterday}
+        onTodo={onNavigateToTodo}
+      />
+
+      {/* ── Grade info popup ── */}
+      {showGradeInfo && (
+        <>
+          {/* 딤드 배경 */}
+          <div
+            className="absolute inset-0 bg-black/50 z-40"
+            onClick={() => setShowGradeInfo(false)}
+          />
+          {/* 팝업 카드 */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[343px] max-w-[480px] bg-[#262626] rounded-[16px] p-[24px] flex flex-col gap-[16px] items-center overflow-hidden">
+            <div className="flex flex-col gap-[32px] items-start w-full">
+
+              {/* 제목 + 설명 + 테이블 */}
+              <div className="flex flex-col gap-[16px] items-start w-full">
+                {/* 제목 */}
+                <div className="w-full text-center">
+                  <p className="font-['Pretendard:SemiBold',sans-serif] text-[18px] leading-[27px] text-white">
+                    함께 달리는 러너 등급
+                  </p>
+                </div>
+                {/* 설명 */}
+                <div className="w-full text-center">
+                  <p className="font-['Pretendard:Regular',sans-serif] text-[16px] leading-[24px] text-white">
+                    총 누적 시간에 따라 조가 나뉘어요
+                  </p>
+                </div>
+                {/* 등급표 */}
+                <div className="bg-[#333] rounded-[12px] p-[16px] w-full">
+                  <div className="flex flex-col gap-[8px] font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px]">
+                    {[
+                      { tier: "1조", desc: "총 8시간 이상" },
+                      { tier: "2조", desc: "총 4시간 이상" },
+                      { tier: "3조", desc: "총 1시간 이상" },
+                      { tier: "4조", desc: "총 0시간 이상" },
+                    ].map(({ tier, desc }) => (
+                      <div key={tier} className="flex items-center justify-between">
+                        <p className="text-[#ab94ff] whitespace-nowrap shrink-0">{tier}</p>
+                        <p className="flex-1 min-w-px text-white text-right">{desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* 확인 버튼 */}
+              <button
+                type="button"
+                onClick={() => setShowGradeInfo(false)}
+                className="bg-[#9678ff] h-[44px] w-full flex items-center justify-center rounded-[8px] active:bg-[#654ec1] transition-colors"
+              >
+                <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-white text-center">
+                  확인
+                </p>
+              </button>
+
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
