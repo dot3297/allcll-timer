@@ -1,32 +1,35 @@
 /**
- * SettingsScreen — 설정 화면
+ * SettingsScreen — 카테고리 편집(관리) 화면
  *
  * ## 개요
- * 할일 화면 우상단 설정 아이콘을 탭하면 진입하는 설정 전체 화면 컴포넌트.
- * 할일 카테고리 목록을 관리하는 기능을 제공한다.
+ * 할일 화면 헤더의 톱니(설정) → "편집"으로 진입하는 카테고리 관리 전체 화면.
+ * Figma 7238-112932 기준.
  *
  * ## 주요 기능
- * - 카테고리 순서 변경 (드래그 또는 버튼)
- * - 카테고리 숨기기 / 숨김 해제 (숨긴 카테고리는 별도 섹션에서 관리)
- * - 카테고리 삭제 (ConfirmPopup으로 확인)
- * - 카테고리 이름 변경 (CategoryRenameSheet 바텀시트 연동)
+ * - "표시중" / "숨김" 두 섹션으로 카테고리 목록 표시 (회색 박스 행)
+ * - 행의 "···" 메뉴: 수정(이름 변경) / 숨기기·숨김 해제 / 삭제
+ * - 체크박스 다중 선택 → 하단 액션 바(숨기기/숨김 해제·삭제)
+ * - "추가 하기" FAB → 새 카테고리 추가(CategoryAddPopup)
  */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CategoryRenameSheet from "./CategoryRenameSheet";
+import CategoryHideSheet, { type HideMode, type SheetVariant } from "./CategoryHideSheet";
 import ConfirmPopup from "./ConfirmPopup";
 
 // Back-arrow path (matches the one used in TodoScreen.tsx Header)
 const PATH_BACK = "M0 1.13137L1.13137 0L6.56569 5.43431L12 0L13.1314 1.13137L6.56569 7.69706L0 1.13137Z";
 
 type Props = {
-  /** Current user-added categories (visible + hidden). */
+  /** Current user-added categories (visible + hidden). 값은 카테고리 키. */
   categories: string[];
-  /** Categories currently hidden from the main UI. Shown here so the user can manage them. */
+  /** 카테고리 키 → 표시 이름 (동일 이름 신규 카테고리는 키가 이름과 다름). */
+  displayName: (key: string) => string;
+  /** Categories currently hidden from the main UI. */
   hiddenCategories: string[];
-  /** Mark the supplied categories as hidden (data preserved). */
-  onHide: (list: string[]) => void;
-  /** Move the supplied categories back to visible (remove from hidden). */
-  onUnhide: (list: string[]) => void;
+  /** Mark the supplied categories as hidden with a scope ('today' = 오늘부터, 'all' = 전체). */
+  onHide: (list: string[], mode: HideMode) => void;
+  /** 숨김 해제. mode 'all' = 전체 해제(모든 날짜 표시), 'today' = 오늘부터 해제(과거는 계속 숨김). */
+  onUnhide: (list: string[], mode: HideMode) => void;
   /** Permanently delete the supplied categories and their todos. */
   onDelete: (list: string[]) => void;
   /** Returns true if the given category has at least one todo with text. */
@@ -35,12 +38,15 @@ type Props = {
   onRename: (oldName: string, newName: string) => void;
   /** Reorder: called with the new full categories array (visible first, then hidden). */
   onReorder: (newCategories: string[]) => void;
-  /** Called on back-arrow or 완료 (no selection). */
+  /** Open the "add category" popup. */
+  onAdd: () => void;
+  /** Called on back-arrow. */
   onBack: () => void;
 };
 
 export default function SettingsScreen({
   categories,
+  displayName,
   hiddenCategories,
   onHide,
   onUnhide,
@@ -48,25 +54,35 @@ export default function SettingsScreen({
   categoryHasTodos,
   onRename,
   onReorder,
+  onAdd,
   onBack,
 }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [renamingCat, setRenamingCat] = useState<string | null>(null);
   // 할일이 있는 카테고리를 삭제할 때 보여줄 확인 팝업 — 삭제할 카테고리 목록을 보관
   const [pendingDeleteList, setPendingDeleteList] = useState<string[] | null>(null);
+  // 숨기기/숨김 해제 옵션 바텀시트 (null이면 닫힘)
+  const [sheet, setSheet] = useState<{ list: string[]; variant: SheetVariant } | null>(null);
+  // 숨기기/숨김 해제 결과 토스트 (null이면 숨김)
+  const [toast, setToast] = useState<string | null>(null);
 
-  // ── drag state ──────────────────────────────────────────────────────────
+  // 토스트 자동 사라짐
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(id);
+  }, [toast]);
+
+  // ── 드래그 정렬 상태 (표시중 섹션) ─────────────────────────────────────────
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
-  // Refs for each visible-row div so we can hit-test by clientY.
   const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Split into the two sections.
   const hiddenSet = new Set(hiddenCategories);
   const visibleList = categories.filter((c) => !hiddenSet.has(c));
   const hiddenList = categories.filter((c) => hiddenSet.has(c));
 
-  // Live preview: while dragging, rearrange visibleList for display only.
+  // 드래그 중에는 displayList를 미리 재배치해 라이브 프리뷰를 보여준다.
   const displayList =
     draggingIdx !== null && overIdx !== null && draggingIdx !== overIdx
       ? (() => {
@@ -77,27 +93,13 @@ export default function SettingsScreen({
         })()
       : visibleList;
 
-  const allSelected = categories.length > 0 && selected.size === categories.length;
-  const hasSelection = selected.size > 0;
-  const allSelectedAreHidden = hasSelection && [...selected].every((c) => hiddenSet.has(c));
-
-  const toggleRow = (cat: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      next.has(cat) ? next.delete(cat) : next.add(cat);
-      return next;
-    });
-  };
-
-  const toggleAll = () => {
-    setSelected(allSelected ? new Set() : new Set(categories));
-  };
-
-  // ── pointer drag handlers (attached to each drag handle) ─────────────
   const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>, idx: number) => {
     e.preventDefault();
-    // Capture so move/up fire even if pointer leaves the element.
-    (e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId);
+    try {
+      (e.currentTarget as HTMLButtonElement).setPointerCapture(e.pointerId);
+    } catch {
+      // 활성 포인터가 없으면(예: 합성 이벤트) 캡처를 건너뛴다.
+    }
     setDraggingIdx(idx);
     setOverIdx(idx);
   };
@@ -106,7 +108,6 @@ export default function SettingsScreen({
     if (draggingIdx === null) return;
     e.preventDefault();
     const y = e.clientY;
-    // Hit-test each visible row ref.
     const found = rowRefs.current.findIndex((ref) => {
       if (!ref) return false;
       const r = ref.getBoundingClientRect();
@@ -126,6 +127,125 @@ export default function SettingsScreen({
     setOverIdx(null);
   };
 
+  const hasSelection = selected.size > 0;
+  const allSelectedAreHidden = hasSelection && [...selected].every((c) => hiddenSet.has(c));
+
+  const toggleRow = (cat: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(cat) ? next.delete(cat) : next.add(cat);
+      return next;
+    });
+  };
+
+  const requestDelete = (list: string[]) => {
+    if (list.length === 0) return;
+    const needsConfirm = list.some((cat) => categoryHasTodos(cat));
+    if (needsConfirm) {
+      setPendingDeleteList(list);
+    } else {
+      onDelete(list);
+      setSelected(new Set());
+    }
+  };
+
+  // 한국어 목적격 조사 (받침 있으면 을, 없으면 를)
+  const objParticle = (s: string) => {
+    const code = s.charCodeAt(s.length - 1);
+    if (code < 0xac00 || code > 0xd7a3) return "을"; // 비한글(숫자 등)은 을
+    return (code - 0xac00) % 28 !== 0 ? "을" : "를";
+  };
+
+  // 숨기기/숨김 해제 결과 토스트 문구 (Figma 7296-114843)
+  const buildToast = (list: string[], variant: SheetVariant, mode: HideMode) => {
+    const label = list.length === 1 ? displayName(list[0]) : `${list.length}개 카테고리`;
+    const subject = `“${label}”${objParticle(label)}`;
+    if (variant === "hide") {
+      return mode === "today"
+        ? `${subject} 오늘부터 숨겼어요`
+        : `${subject} 과거 기록까지 모두 숨겼어요`;
+    }
+    return mode === "today"
+      ? `${subject} 오늘부터 다시 표시 했어요`
+      : `${subject} 과거 기록부터 다시 표시 했어요`;
+  };
+
+  // ── 카테고리 행 ───────────────────────────────────────────────────────────
+  // dragIdx 가 주어지면(표시중 행) 드래그 핸들 + 정렬 프리뷰가 활성화된다.
+  const renderRow = (cat: string, isHidden: boolean, dragIdx?: number) => {
+    const checked = selected.has(cat);
+    const draggable = dragIdx !== undefined;
+    const originalIdx = draggable ? visibleList.indexOf(cat) : -1;
+    const isDragging = draggable && draggingIdx === originalIdx;
+    const isDropTarget =
+      draggable && draggingIdx !== null && overIdx === dragIdx && draggingIdx !== dragIdx;
+    return (
+      <div
+        key={cat}
+        ref={draggable ? (el) => { rowRefs.current[dragIdx] = el; } : undefined}
+        className={`bg-[var(--color-bg-muted)] rounded-[8px] h-[40px] flex items-center gap-[8px] px-[12px] w-full shrink-0 transition-opacity duration-100 ${
+          isDragging ? "opacity-40" : "opacity-100"
+        }`}
+        style={isDropTarget ? { borderTop: "2px solid var(--color-border-brand)", marginTop: "-2px" } : undefined}
+        data-name="settings-row"
+        data-hidden={isHidden}
+      >
+        {/* 체크박스 (다중 선택) */}
+        <button
+          type="button"
+          onClick={() => toggleRow(cat)}
+          aria-label={checked ? "선택 해제" : "선택"}
+          className="size-[24px] flex items-center justify-center shrink-0"
+        >
+          <div
+            className={`size-[18px] rounded-[4px] flex items-center justify-center transition-colors ${
+              checked
+                ? "bg-[var(--color-bg-brand)] border border-[var(--color-border-brand)]"
+                : "border-[1.44px] border-[var(--color-border-subtle)]"
+            }`}
+          >
+            {checked && (
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                <path d="M1.5 5.2L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </div>
+        </button>
+
+        {/* 이름 — 탭하면 이름 변경(수정) */}
+        <button
+          type="button"
+          onClick={() => setRenamingCat(cat)}
+          className="flex-1 min-w-0 text-left font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-weak)] overflow-hidden whitespace-nowrap text-ellipsis active:opacity-70 transition-opacity"
+          aria-label={`${displayName(cat)} 이름 수정`}
+          data-name="settings-row-name"
+        >
+          {displayName(cat)}
+        </button>
+
+        {/* 드래그 핸들 (표시중 행만) — 순서 변경 */}
+        {draggable && (
+          <button
+            type="button"
+            aria-label="순서 변경"
+            onPointerDown={(e) => handlePointerDown(e, dragIdx)}
+            className={`size-[24px] flex items-center justify-center shrink-0 touch-none select-none ${
+              draggingIdx === dragIdx ? "cursor-grabbing" : "cursor-grab active:opacity-70"
+            }`}
+            data-name="drag-handle"
+          >
+            {/* Figma 7238-113411 — 드래그 핸들 (가로 막대 2개, "=") */}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <rect x="2" y="6" width="12" height="2" rx="1" fill="var(--color-fg-text-disable)" />
+              <rect x="2" y="9.5" width="12" height="2" rx="1" fill="var(--color-fg-text-disable)" />
+            </svg>
+          </button>
+        )}
+
+      </div>
+    );
+  };
+
   return (
     <div
       className="fixed inset-0 z-[70] bg-[var(--color-bg-weak)] flex flex-col items-stretch"
@@ -143,7 +263,7 @@ export default function SettingsScreen({
         </div>
       </div>
 
-      {/* Top nav: back + title */}
+      {/* Top nav: back + title "편집" */}
       <div className="h-[56px] relative w-full shrink-0">
         <button
           type="button"
@@ -158,12 +278,7 @@ export default function SettingsScreen({
               style={{ containerType: "size" }}
             >
               <div className="-scale-x-100 flex-none h-[100cqw] rotate-90 w-[100cqh]">
-                <svg
-                  className="absolute block inset-0 size-full"
-                  fill="none"
-                  preserveAspectRatio="none"
-                  viewBox="0 0 13.1314 7.69706"
-                >
+                <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 13.1314 7.69706">
                   <path clipRule="evenodd" d={PATH_BACK} fill="#F9F9FA" fillRule="evenodd" />
                 </svg>
               </div>
@@ -176,305 +291,93 @@ export default function SettingsScreen({
       </div>
 
       {/* Body */}
-      <div className="flex-1 min-h-0 flex flex-col px-[16px] pt-[16px] pb-[24px]">
-        {categories.length === 0 ? (
-          <div className="flex flex-col gap-[8px]">
-            <p className="font-['Pretendard:SemiBold',sans-serif] text-white text-[20px] leading-[28px]">
-              아직 추가된 카테고리가 없어요
-            </p>
-            <p className="font-['Pretendard:Medium',sans-serif] text-[var(--color-fg-text-subtle)] text-[16px] leading-[24px]">
-              카테고리를 추가해 보세요
-            </p>
-          </div>
-        ) : (
-          <p className="font-['Pretendard:SemiBold',sans-serif] text-[var(--color-fg-text-weak)] text-[20px] leading-[28px]">
-            카테고리 편집을 할 수 있어요
-          </p>
-        )}
+      <div className="flex-1 min-h-0 flex flex-col gap-[32px] overflow-y-auto p-[16px]">
+        {/* Title */}
+        <p className="shrink-0 font-['Pretendard:SemiBold',sans-serif] text-white text-[20px] leading-[28px]">
+          카테고리를 관리할 수 있어요
+        </p>
 
-        {/* 전체 선택 — only shown when there are visible categories */}
-        {visibleList.length > 0 && (
-          <>
-            <button
-              type="button"
-              onClick={toggleAll}
-              className="mt-[24px] self-start h-[40px] flex items-center gap-[12px] active:opacity-70 transition-opacity"
-              data-name="settings-select-all"
-            >
-              <div className="size-[24px] flex items-center justify-center shrink-0">
+        {categories.length === 0 ? (
+          <p className="font-['Pretendard:Medium',sans-serif] text-[var(--color-fg-text-subtle)] text-[16px] leading-[24px]">
+            아직 추가된 카테고리가 없어요. 추가 하기로 만들어 보세요.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-[24px]" data-name="category-sections">
+            {/* 표시중 */}
+            {visibleList.length > 0 && (
+              <div className="flex flex-col gap-[4px]" data-name="visible-section">
+                <p className="font-['Pretendard:Medium',sans-serif] text-[var(--color-fg-text-subtle)] text-[14px] leading-[21px]">
+                  표시중
+                </p>
                 <div
-                  className={`size-[18px] rounded-[4px] flex items-center justify-center transition-colors ${
-                    allSelected
-                      ? "bg-[var(--color-bg-brand)] border border-[var(--color-border-brand)]"
-                      : "border border-[#d8d8d8]"
-                  }`}
+                  className="flex flex-col gap-[8px]"
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
+                  onPointerLeave={handlePointerUp}
                 >
-                  {allSelected && (
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-                      <path
-                        d="M1.5 5.2L4 7.5L8.5 2.5"
-                        stroke="white"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
+                  {displayList.map((cat, displayIdx) => renderRow(cat, false, displayIdx))}
                 </div>
               </div>
-              <span className="font-['Pretendard:Regular',sans-serif] text-[var(--color-fg-text-weak)] text-[14px] leading-[21px]">
-                전체 선택
-              </span>
-            </button>
-            <div className="mt-[8px] h-px w-full bg-[#404040]" aria-hidden="true" />
-          </>
-        )}
+            )}
 
-        {/* Category rows */}
-        <div
-          className="mt-[12px] flex flex-col flex-1 min-h-0 overflow-y-auto"
-          // Pointer move/up are on the scroll container so they stay active
-          // even when the pointer slides between rows.
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
-        >
-          {categories.length > 0 && (
-            <>
-              {/* ── Visible category rows ── */}
-              <div className="flex flex-col gap-[8px]">
-                {displayList.map((cat, displayIdx) => {
-                  // originalIdx: position in the non-rearranged visibleList (used for drag logic).
-                  const originalIdx = visibleList.indexOf(cat);
-                  const checked = selected.has(cat);
-                  const isDragging = draggingIdx === originalIdx;
-                  // Show a drop-indicator line above a row when it's the current overIdx
-                  // and not the dragging row itself.
-                  const isDropTarget =
-                    draggingIdx !== null &&
-                    overIdx === displayIdx &&
-                    draggingIdx !== displayIdx;
-
-                  return (
-                    <div
-                      key={cat}
-                      ref={(el) => { rowRefs.current[displayIdx] = el; }}
-                      className={`h-[40px] flex items-center gap-[12px] transition-opacity duration-100 ${
-                        isDragging ? "opacity-40" : "opacity-100"
-                      }`}
-                      data-name="settings-row"
-                      data-hidden="false"
-                      style={
-                        isDropTarget
-                          ? { borderTop: "2px solid var(--color-border-brand)", marginTop: "-2px" }
-                          : undefined
-                      }
-                    >
-                      {/* Checkbox */}
-                      <button
-                        type="button"
-                        onClick={() => toggleRow(cat)}
-                        aria-label={checked ? "선택 해제" : "선택"}
-                        className="size-[24px] flex items-center justify-center shrink-0"
-                      >
-                        <div
-                          className={`size-[18px] rounded-[4px] flex items-center justify-center transition-colors ${
-                            checked
-                              ? "bg-[var(--color-bg-brand)] border border-[var(--color-border-brand)]"
-                              : "border border-[#d8d8d8]"
-                          }`}
-                        >
-                          {checked && (
-                            <svg
-                              width="10"
-                              height="10"
-                              viewBox="0 0 10 10"
-                              fill="none"
-                              aria-hidden="true"
-                            >
-                              <path
-                                d="M1.5 5.2L4 7.5L8.5 2.5"
-                                stroke="white"
-                                strokeWidth="1.6"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          )}
-                        </div>
-                      </button>
-
-                      {/* Name */}
-                      <span className="font-['Pretendard:Medium',sans-serif] text-[var(--color-fg-text-weak)] text-[14px] leading-[21px] flex-1 min-w-0">
-                        {cat}
-                      </span>
-
-                      {/* Pencil – rename */}
-                      <button
-                        type="button"
-                        aria-label="이름 수정"
-                        onClick={() => setRenamingCat(cat)}
-                        className="size-[24px] flex items-center justify-center shrink-0 active:opacity-70 transition-opacity"
-                      >
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 16 16"
-                          fill="none"
-                          aria-hidden="true"
-                        >
-                          <path
-                            d="M11.5 1.5L14.5 4.5L4.5 14.5H1.5V11.5L11.5 1.5Z"
-                            stroke="#B6B8B9"
-                            strokeWidth="1.3"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-
-                      {/* Drag handle ≡ */}
-                      <button
-                        type="button"
-                        aria-label="순서 변경"
-                        onPointerDown={(e) => handlePointerDown(e, displayIdx)}
-                        className={`size-[24px] flex items-center justify-center shrink-0 touch-none select-none ${
-                          draggingIdx === displayIdx
-                            ? "cursor-grabbing"
-                            : "cursor-grab active:opacity-70"
-                        }`}
-                        data-name="drag-handle"
-                      >
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 16 16"
-                          fill="none"
-                          aria-hidden="true"
-                        >
-                          <rect x="2" y="4" width="12" height="1.5" rx="0.75" fill="var(--color-fg-text-disable)" />
-                          <rect x="2" y="7.25" width="12" height="1.5" rx="0.75" fill="var(--color-fg-text-disable)" />
-                          <rect x="2" y="10.5" width="12" height="1.5" rx="0.75" fill="var(--color-fg-text-disable)" />
-                        </svg>
-                      </button>
-                    </div>
-                  );
-                })}
+            {/* 숨김 */}
+            {hiddenList.length > 0 && (
+              <div className="flex flex-col gap-[4px]" data-name="hidden-section">
+                <p className="font-['Pretendard:Medium',sans-serif] text-[var(--color-fg-text-subtle)] text-[14px] leading-[21px]">
+                  숨김
+                </p>
+                <div className="flex flex-col gap-[8px]">
+                  {hiddenList.map((cat) => renderRow(cat, true))}
+                </div>
               </div>
-
-              {/* ── Hidden section ── */}
-              {hiddenList.length > 0 && (
-                <>
-                  <div className="mt-[16px] h-px w-full bg-[#404040]" aria-hidden="true" />
-                  <p
-                    className="font-['Pretendard:Regular',sans-serif] text-[var(--color-fg-text-subtle)] text-[14px] leading-[21px] mt-[16px] px-[4px]"
-                    data-name="hidden-section-header"
-                  >
-                    숨긴 할일
-                  </p>
-                  <div className="flex flex-col gap-[8px] mt-[8px]">
-                    {hiddenList.map((cat) => {
-                      const checked = selected.has(cat);
-                      return (
-                        <div
-                          key={cat}
-                          className="h-[40px] flex items-center gap-[12px]"
-                          data-name="settings-row"
-                          data-hidden="true"
-                        >
-                          <button
-                            type="button"
-                            onClick={() => toggleRow(cat)}
-                            aria-label={checked ? "선택 해제" : "선택"}
-                            className="size-[24px] flex items-center justify-center shrink-0"
-                          >
-                            <div
-                              className={`size-[18px] rounded-[4px] flex items-center justify-center transition-colors ${
-                                checked
-                                  ? "bg-[var(--color-bg-brand)] border border-[var(--color-border-brand)]"
-                                  : "border border-[var(--color-fg-text-disable)]"
-                              }`}
-                            >
-                              {checked && (
-                                <svg
-                                  width="10"
-                                  height="10"
-                                  viewBox="0 0 10 10"
-                                  fill="none"
-                                  aria-hidden="true"
-                                >
-                                  <path
-                                    d="M1.5 5.2L4 7.5L8.5 2.5"
-                                    stroke="white"
-                                    strokeWidth="1.6"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                </svg>
-                              )}
-                            </div>
-                          </button>
-                          <span className="font-['Pretendard:Medium',sans-serif] text-[var(--color-fg-text-subtle)] text-[14px] leading-[21px] flex-1 min-w-0">
-                            {cat}
-                          </span>
-                          {/* No pencil/drag for hidden rows */}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Bottom CTA */}
-        {categories.length > 0 && hasSelection ? (
-          <div className="mt-[16px] flex items-stretch gap-[8px]">
-            <button
-              type="button"
-              onClick={() => {
-                allSelectedAreHidden
-                  ? onUnhide(Array.from(selected))
-                  : onHide(Array.from(selected));
-                setSelected(new Set());
-              }}
-              className="flex-1 h-[56px] rounded-[12px] bg-[var(--color-fg-text-disable)] text-white text-[16px] leading-[24px] font-['Pretendard:Medium',sans-serif] active:bg-[#404040] transition-colors"
-              data-name={allSelectedAreHidden ? "settings-unhide" : "settings-hide"}
-            >
-              {allSelectedAreHidden ? "숨김 해제" : "감추기"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const list = Array.from(selected);
-                // 선택된 카테고리 중 할일이 하나라도 있으면 확인 팝업을 먼저 띄운다
-                const needsConfirm = list.some((cat) => categoryHasTodos(cat));
-                if (needsConfirm) {
-                  setPendingDeleteList(list);
-                } else {
-                  onDelete(list);
-                  setSelected(new Set());
-                }
-              }}
-              className="flex-1 h-[56px] rounded-[12px] bg-[var(--color-bg-brand)] text-white text-[16px] leading-[24px] font-['Pretendard:Medium',sans-serif] active:bg-[var(--color-bg-brand-pressed)] transition-colors"
-              data-name="settings-delete"
-            >
-              삭제
-            </button>
+            )}
           </div>
-        ) : categories.length > 0 ? (
+        )}
+      </div>
+
+      {/* 하단: 선택 시 액션 바 / 미선택 시 "추가 하기" FAB */}
+      {hasSelection ? (
+        <div className="shrink-0 px-[16px] pb-[12px] flex items-stretch gap-[8px]">
           <button
             type="button"
-            onClick={onBack}
-            disabled
-            className="mt-[16px] h-[56px] rounded-[12px] bg-[var(--color-bg-brand)] text-white text-[16px] leading-[24px] font-['Pretendard:Medium',sans-serif] disabled:bg-[var(--color-bg-muted)] disabled:text-[var(--color-fg-text-disable)] disabled:cursor-not-allowed"
-            data-name="settings-done"
+            onClick={() => {
+              // 숨기기·숨김 해제 모두 범위 선택 바텀시트를 먼저 띄운다.
+              setSheet({
+                list: Array.from(selected),
+                variant: allSelectedAreHidden ? "unhide" : "hide",
+              });
+            }}
+            className="flex-1 h-[56px] rounded-[12px] bg-[var(--color-fg-text-disable)] text-white text-[16px] leading-[24px] font-['Pretendard:Medium',sans-serif] active:bg-[#404040] transition-colors"
           >
-            완료
+            {allSelectedAreHidden ? "숨김 해제" : "숨기기"}
           </button>
-        ) : null}
-      </div>
+          <button
+            type="button"
+            onClick={() => requestDelete(Array.from(selected))}
+            className="flex-1 h-[56px] rounded-[12px] bg-[var(--color-bg-brand)] text-white text-[16px] leading-[24px] font-['Pretendard:Medium',sans-serif] active:bg-[var(--color-bg-brand-pressed)] transition-colors"
+          >
+            삭제
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onAdd}
+          className="absolute right-[16px] bottom-[50px] h-[40px] flex items-center gap-[4px] pl-[12px] pr-[16px] rounded-full bg-[var(--color-bg-brand)] active:bg-[var(--color-bg-brand-pressed)] transition-colors"
+          style={{ boxShadow: "0px 4px 6px rgba(109,114,120,0.16)" }}
+          data-name="settings-fab-add"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M8 3.5V12.5M3.5 8H12.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="font-['Pretendard:Medium',sans-serif] text-white text-[14px] leading-[21px] whitespace-nowrap">
+            추가 하기
+          </span>
+        </button>
+      )}
+
+      {/* Safe area */}
+      <div className="h-[34px] shrink-0" />
 
       {/* 할일 있는 카테고리 삭제 전 확인 팝업 */}
       {pendingDeleteList !== null && (
@@ -495,13 +398,46 @@ export default function SettingsScreen({
       {/* Category rename bottom sheet */}
       {renamingCat !== null && (
         <CategoryRenameSheet
-          initialName={renamingCat}
+          initialName={displayName(renamingCat)}
           onSave={(newName) => {
             onRename(renamingCat, newName);
             setRenamingCat(null);
           }}
           onClose={() => setRenamingCat(null)}
         />
+      )}
+
+      {/* 카테고리 숨기기 / 숨김 해제 옵션 바텀시트 (오늘부터 / 전체) */}
+      {sheet !== null && sheet.list.length > 0 && (
+        <CategoryHideSheet
+          label={sheet.list.length === 1 ? displayName(sheet.list[0]) : `${sheet.list.length}개 카테고리`}
+          variant={sheet.variant}
+          onConfirm={(mode) => {
+            if (sheet.variant === "hide") onHide(sheet.list, mode);
+            else onUnhide(sheet.list, mode);
+            setToast(buildToast(sheet.list, sheet.variant, mode));
+            setSelected(new Set());
+            setSheet(null);
+          }}
+          onClose={() => setSheet(null)}
+        />
+      )}
+
+      {/* 결과 토스트 (Figma 7296-114843) — 다크 배경, 자동 사라짐 */}
+      {toast && (
+        <div
+          className="fixed bottom-[96px] left-1/2 -translate-x-1/2 z-[95] max-w-[calc(100%-32px)] pointer-events-none"
+          data-name="settings-toast"
+        >
+          <div
+            className="bg-[var(--color-bg-neutral-solid-pressed)] rounded-[16px] px-[20px] py-[16px]"
+            style={{ opacity: 0.92, boxShadow: "0px 8px 24px rgba(0,0,0,0.45)" }}
+          >
+            <p className="font-['Pretendard:Regular',sans-serif] text-[16px] leading-[24px] text-white text-center [word-break:keep-all]">
+              {toast}
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );

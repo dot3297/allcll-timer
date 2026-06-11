@@ -18,7 +18,7 @@ import { useState, useEffect } from "react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import confettiLottie from "../../imports/타이머종료/Confetti.lottie";
 import videoBg from "../../imports/타이머일반모드쉴래요클릭시/timer_bg.mp4";
-import imgRestBg from "../../imports/타이머일반모드쉴래요클릭시/1a5c50843213f4fde821a556c1e83bbb1b101fdf.png";
+import imgRestBg from "../../imports/타이머일반모드쉴래요클릭시/timer_girl.png";
 import imgClockBgCircle from "../../imports/타이머일반모드쉴래요클릭시/timer_clock_bg_circle.svg";
 import videoEndBg from "../../imports/타이머종료/timer_end_bg.mp4";
 import Bubble from "../../imports/Bubble/Bubble";

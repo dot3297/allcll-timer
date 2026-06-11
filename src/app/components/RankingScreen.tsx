@@ -16,7 +16,6 @@
  * - [ ] 실시간 랭킹 업데이트 구현
  */
 import { useState, useEffect, useRef } from "react";
-import BottomNav from "./BottomNav";
 import imgInfoIcon from "../../imports/랭킹아이콘/info_circle.svg";
 // 티어 뱃지 이미지 — 로컬 에셋 (Figma MCP URL 만료 대비)
 import imgTierActive4   from "../../imports/랭킹티어/tier_active_4.svg";
@@ -57,8 +56,8 @@ const UNSPLASH_IDS = [
 ];
 
 function avatarSrc(idx: number): string {
-  const id = UNSPLASH_IDS[idx % UNSPLASH_IDS.length];
-  return `https://images.unsplash.com/photo-${id}?w=100&h=100&fit=crop&crop=faces,center&auto=format`;
+  // pravatar — 안정적인 인물 사진 아바타(404 없음). idx로 결정론적 선택.
+  return `https://i.pravatar.cc/100?img=${(idx % 70) + 1}`;
 }
 
 function Avatar({
@@ -141,6 +140,7 @@ const TIER_DATA: Record<number, RankItem[]> = {
   4: buildData(NAMES_T4, timeToSecs("05:34:05"), 800, 4),   // rank 5 = 나 (고2)
   3: buildData(NAMES_T3, timeToSecs("08:45:20"), 950),
   2: buildData(NAMES_T2, timeToSecs("11:20:15"), 1100, 3),  // rank 4 = 나 (클럽)
+  1: buildData(NAMES_T2, timeToSecs("14:10:30"), 1200),     // 최고 조
 };
 
 // 탭별 기본 조
@@ -151,10 +151,28 @@ const TIER_MSG: Record<number, string> = {
   4: "45분만 더 달리면 3조로 올라가요",
   3: "1시간만 더 달리면 2조로 올라가요",
   2: "2시간만 더 달리면 1조로 올라가요",
+  1: "최고 조에서 달리고 있어요",
 };
 
+// ── Club data ─────────────────────────────────────────────────────────────────
+// 클럽 탭: 조(tier) 개념 없이 단순 순위(1,2,3,4...)만 존재.
+// 세그먼트 필터 = "전체" + 클럽 태그(최대 2개). 각 세그먼트는 독립적인 순위 리스트.
+const CLUB_TAGS = ["학교", "동아리"] as const;
+const CLUB_SEGMENTS = ["전체", ...CLUB_TAGS] as const;
+
+const NAMES_CLUB_SCHOOL = ["반장님","우리반에이스","앞자리고정","조용한모범생","얼렁떵땅","뒷자리단골","급식부장","야자생존자","칠판지킴이","담임의자랑"];
+const NAMES_CLUB_CIRCLE = ["동방지박령","연습벌레","무대체질","합주의달인","얼렁떵땅","악보마스터","박자감甲","목청왕","리허설중독","앵콜요청러"];
+
+// 클럽 세그먼트별 순위 데이터 (index: 0=전체, 1=학교, 2=동아리). rank 5 = 나(얼렁떵땅).
+const CLUB_DATA: RankItem[][] = [
+  buildData(NAMES_T4, timeToSecs("05:34:05"), 800, 4),              // 전체
+  buildData(NAMES_CLUB_SCHOOL, timeToSecs("04:50:12"), 700, 4),    // 학교
+  buildData(NAMES_CLUB_CIRCLE, timeToSecs("03:40:33"), 600, 4),    // 동아리
+];
+
 // ── Carousel tiers ────────────────────────────────────────────────────────────
-const CAROUSEL_TIERS = [4, 3, 2] as const;
+// 왼→오 오름차순 [1,2,3,4]. 활성(현재 조)이 중앙에 오면 더 높은 조(3,2,1)가 왼쪽에 보인다. (Figma 7130-35592)
+const CAROUSEL_TIERS = [1, 2, 3, 4] as const;
 type CarouselTier = typeof CAROUSEL_TIERS[number];
 const CAROUSEL_GAP  = 16;
 const CELL_SIZE     = 100; // 고정 셀 크기 — translateX 계산이 배지 크기에 독립적
@@ -230,7 +248,8 @@ function TierCarousel({ activeTier, onChange }: { activeTier: number; onChange: 
 
   const idx = CAROUSEL_TIERS.indexOf(activeTier as CarouselTier);
 
-  // translateX는 고정 CELL_SIZE 기준 → 배지 크기 변화에 완전히 독립
+  // translateX는 고정 CELL_SIZE 기준 → 배지 크기 변화에 완전히 독립.
+  // 활성(보라색) 셀을 항상 화면 중앙에 배치한다.
   const widthBefore = idx * (CELL_SIZE + CAROUSEL_GAP);
   const tx = width / 2 - widthBefore - CELL_SIZE / 2;
 
@@ -273,6 +292,47 @@ function TierCarousel({ activeTier, onChange }: { activeTier: number; onChange: 
   );
 }
 
+// ── SegmentedControl (클럽 태그 필터) ─────────────────────────────────────────
+// Figma 7277-185789: 알약형 컨테이너(#333) 안에 세그먼트들, 활성은 브랜드 퍼플(#9678ff).
+function SegmentedControl({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly string[];
+  value: number;
+  onChange: (i: number) => void;
+}) {
+  return (
+    <div className="flex items-center justify-center px-[16px] py-[16px] w-full">
+      <div className="bg-[var(--color-bg-muted)] flex h-[40px] items-center p-[4px] rounded-full">
+        {options.map((opt, i) => {
+          const active = i === value;
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => onChange(i)}
+              aria-pressed={active}
+              className={`min-w-[68px] h-[32px] flex items-center justify-center px-[8px] py-[6px] rounded-full transition-colors ${
+                active ? "bg-[#9678ff] drop-shadow-[0px_4px_10px_rgba(109,114,120,0.16)]" : ""
+              }`}
+            >
+              <p
+                className={`font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] whitespace-nowrap ${
+                  active ? "text-white" : "text-[var(--color-fg-text-disable)]"
+                }`}
+              >
+                {opt}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── MeBadge ───────────────────────────────────────────────────────────────────
 function MeBadge() {
   return (
@@ -297,11 +357,18 @@ function RankRow({ item, tick }: { item: RankItem; tick: number }) {
             {item.rank}
           </p>
         </div>
-        <Avatar size={40} idx={item.avatarIdx} />
+        {/* 아바타 — 48px 슬롯에 40px 이미지 (Figma medal-icon). 내 행이면 아바타 우하단에 퍼플 "나" 배지. */}
+        <div className="relative shrink-0 size-[48px] flex items-center justify-center">
+          <Avatar size={40} idx={item.avatarIdx} />
+          {item.isMe && (
+            <div className="absolute bottom-[2px] right-[2px] size-[20px] rounded-full bg-[var(--color-bg-brand-pressed)] border border-white flex items-center justify-center">
+              <p className="font-['Pretendard:SemiBold',sans-serif] text-[10px] leading-[16px] text-white text-center">나</p>
+            </div>
+          )}
+        </div>
         <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-[var(--color-fg-text-muted)] overflow-hidden text-ellipsis whitespace-nowrap">
           {item.name}
         </p>
-        {item.isMe && <MeBadge />}
       </div>
       {/* Live timer */}
       <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-white text-center whitespace-nowrap shrink-0 tabular-nums">
@@ -324,9 +391,12 @@ export default function RankingScreen({
   const [activeTab,     setActiveTab]     = useState<"고2" | "클럽">("고2");
   // 탭마다 독립적인 활성 조를 기억
   const [tierByTab,     setTierByTab]     = useState<Record<"고2" | "클럽", number>>(TAB_DEFAULT_TIER);
+  // 클럽 세그먼트 필터 (0=전체, 1=태그1, 2=태그2)
+  const [clubSegment,   setClubSegment]   = useState(0);
   const [tick,          setTick]          = useState(0);
   const [showGradeInfo, setShowGradeInfo] = useState(false);
 
+  const isClub     = activeTab === "클럽";
   const activeTier = tierByTab[activeTab];
 
   // 1-second interval — all timers tick together
@@ -335,11 +405,24 @@ export default function RankingScreen({
     return () => clearInterval(id);
   }, []);
 
-  const rankData   = TIER_DATA[activeTier] ?? TIER_DATA[4];
-  const msg        = TIER_MSG[activeTier]  ?? TIER_MSG[4];
-  // 내 항목 — 캐러셀 탐색 시에도 항상 표시되도록 탭의 기본 조에서 고정
-  const myTierData = TIER_DATA[TAB_DEFAULT_TIER[activeTab]] ?? TIER_DATA[4];
-  const meItem     = myTierData.find(item => item.isMe);
+  // ── 데이터 선택 ──
+  // 클럽: 조 개념 없이 세그먼트별 단순 순위 리스트.
+  // 고2: 조(tier)별 리스트 + 동기부여 메시지.
+  let rankData: RankItem[];
+  let meItem: RankItem | undefined;
+  let msg = "";
+  if (isClub) {
+    rankData = CLUB_DATA[clubSegment] ?? CLUB_DATA[0];
+    meItem   = rankData.find(item => item.isMe);
+  } else {
+    rankData = TIER_DATA[activeTier] ?? TIER_DATA[4];
+    // 동기부여 메시지는 항상 "내 조" 기준으로 고정 — 캐러셀로 다른 조를 봐도 바뀌지 않는다.
+    const myTier     = TAB_DEFAULT_TIER[activeTab];
+    msg              = TIER_MSG[myTier] ?? TIER_MSG[4];
+    // 내 항목 — 캐러셀 탐색 시에도 항상 표시되도록 탭의 기본 조에서 고정
+    const myTierData = TIER_DATA[myTier] ?? TIER_DATA[4];
+    meItem           = myTierData.find(item => item.isMe);
+  }
 
   return (
     <div className="bg-[var(--color-bg-weak)] h-full w-full flex flex-col relative">
@@ -357,11 +440,21 @@ export default function RankingScreen({
         </p>
       </div>
 
-      {/* ── Header ── */}
-      <div className="h-[56px] shrink-0 flex items-center px-[12px] py-[8px]">
-        <div className="flex h-[36px] items-center px-[12px] py-[8px] rounded-[8px]">
-          <p className="font-['Pretendard:SemiBold',sans-serif] text-[var(--color-fg-text-weak)] text-[20px] leading-[28px] whitespace-nowrap">랭킹</p>
-        </div>
+      {/* ── Header (뒤로가기 + 중앙 타이틀) ── */}
+      <div className="h-[56px] shrink-0 relative w-full">
+        <button
+          type="button"
+          onClick={onNavigateToTimer}
+          aria-label="뒤로"
+          className="absolute left-[8px] top-1/2 -translate-y-1/2 size-[36px] flex items-center justify-center rounded-[8px] active:bg-[#333] transition-colors"
+        >
+          <svg className="size-[24px]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 5L8 12L15 19" stroke="var(--color-fg-text-weak)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <p className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-[var(--color-fg-text-weak)] whitespace-nowrap">
+          랭킹
+        </p>
       </div>
 
       {/* ── Tabs ── */}
@@ -374,6 +467,8 @@ export default function RankingScreen({
               setActiveTab(tab);
               // 탭 전환 시 해당 탭의 기본 조(나의 조)로 이동
               setTierByTab(prev => ({ ...prev, [tab]: TAB_DEFAULT_TIER[tab] }));
+              // 클럽 세그먼트는 항상 "전체"로 리셋
+              setClubSegment(0);
             }}
             className={`flex-1 h-[40px] flex items-center justify-center px-[16px] py-[10px] transition-colors ${
               activeTab === tab ? "border-b-2 border-[var(--color-fg-text-weak)]" : ""
@@ -391,36 +486,47 @@ export default function RankingScreen({
       {/* ── Divider ── */}
       <div className="bg-[var(--color-fg-text-disable)] h-px w-full shrink-0" />
 
-      {/* ── Tier section (fixed — does not scroll) ── */}
+      {/* ── 상단 고정 섹션 (스크롤 안 됨) ── */}
       <div className="shrink-0 relative flex flex-col items-center py-[24px] gap-[8px]">
 
-        {/* Motivational text */}
-        <div className="flex gap-[4px] items-center justify-center px-[16px]">
-          <p className="font-['Pretendard:SemiBold',sans-serif] text-[20px] leading-[28px] text-white text-center">
-            {msg}
-          </p>
-          <button
-            type="button"
-            onClick={() => setShowGradeInfo(true)}
-            className="relative shrink-0 cursor-pointer active:scale-90 transition-transform"
-            style={{ width: 20, height: 20 }}
-            aria-label="등급 안내 보기"
-          >
-            <div className="absolute" style={{ left: 1.67, top: 1.67, width: 16.667, height: 16.667 }}>
-              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgInfoIcon} />
+        {isClub ? (
+          /* 클럽: 조 개념 없음 → 태그 세그먼트 필터 (전체 + 최대 2태그) */
+          <SegmentedControl
+            options={CLUB_SEGMENTS}
+            value={clubSegment}
+            onChange={setClubSegment}
+          />
+        ) : (
+          <>
+            {/* 고2: 동기부여 메시지 */}
+            <div className="flex gap-[4px] items-center justify-center px-[16px]">
+              <p className="font-['Pretendard:SemiBold',sans-serif] text-[20px] leading-[28px] text-white text-center">
+                {msg}
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowGradeInfo(true)}
+                className="relative shrink-0 cursor-pointer active:scale-90 transition-transform"
+                style={{ width: 20, height: 20 }}
+                aria-label="등급 안내 보기"
+              >
+                <div className="absolute" style={{ left: 1.67, top: 1.67, width: 16.667, height: 16.667 }}>
+                  <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgInfoIcon} />
+                </div>
+              </button>
             </div>
-          </button>
-        </div>
 
-        {/* Tier carousel */}
-        <TierCarousel
-          activeTier={activeTier}
-          onChange={(t) => setTierByTab(prev => ({ ...prev, [activeTab]: t }))}
-        />
+            {/* 고2: 티어 캐러셀 */}
+            <TierCarousel
+              activeTier={activeTier}
+              onChange={(t) => setTierByTab(prev => ({ ...prev, [activeTab]: t }))}
+            />
+          </>
+        )}
 
-        {/* My rank card — meItem 기반 동적 렌더링 */}
+        {/* My rank card — 핀 고정(퍼플 보더 + 아바타 위 퍼플 "나" 배지) */}
         {meItem && (
-          <div className="bg-[var(--color-bg-muted)] drop-shadow-[0px_4px_4px_rgba(110,109,120,0.04)] flex items-center px-[12px] py-[8px] rounded-[12px] mx-[16px] w-[calc(100%-32px)]">
+          <div className="bg-[var(--color-bg-input)] border-2 border-[var(--color-border-brand)] drop-shadow-[0px_4px_4px_rgba(110,109,120,0.04)] flex items-center px-[12px] py-[8px] rounded-[12px] mx-[16px] w-[calc(100%-32px)]">
             <div className="flex flex-1 gap-[42px] items-center min-w-0">
               <div className="flex flex-1 gap-[8px] items-center min-w-0">
                 <div className="flex flex-col items-center justify-center shrink-0 size-[20px] overflow-hidden">
@@ -428,11 +534,16 @@ export default function RankingScreen({
                     {meItem.rank}
                   </p>
                 </div>
-                <Avatar size={40} idx={meItem.avatarIdx} />
+                {/* 아바타(48px 슬롯, 40px 이미지) + 퍼플 "나" 배지 */}
+                <div className="relative shrink-0 size-[48px] flex items-center justify-center">
+                  <Avatar size={40} idx={meItem.avatarIdx} />
+                  <div className="absolute bottom-[2px] right-[2px] size-[20px] rounded-full bg-[var(--color-bg-brand-pressed)] border border-white flex items-center justify-center">
+                    <p className="font-['Pretendard:SemiBold',sans-serif] text-[10px] leading-[16px] text-white text-center">나</p>
+                  </div>
+                </div>
                 <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-white overflow-hidden text-ellipsis whitespace-nowrap">
                   얼렁떵땅
                 </p>
-                <MeBadge />
               </div>
               <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-white text-center whitespace-nowrap shrink-0 tabular-nums">
                 {secsToTime(meItem.baseSecs + tick)}
@@ -440,33 +551,37 @@ export default function RankingScreen({
             </div>
           </div>
         )}
-
-        {/* Bottom fog */}
-        <div
-          className="pointer-events-none absolute bottom-0 left-0 right-0 h-[32px]"
-          style={{ background: "linear-gradient(to bottom, rgba(38,38,38,0) 0%, var(--color-bg-weak) 100%)" }}
-        />
       </div>
 
-      {/* ── Rank list (scrollable) ── */}
-      <div
-        className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden"
-        style={{ scrollbarWidth: "none" }}
-      >
-        <div className="flex flex-col gap-[4px] px-[14px] py-[8px]">
-          {rankData.map((item) => (
-            <RankRow key={item.rank} item={item} tick={tick} />
-          ))}
+      {/* ── Rank list (scrollable) + 상단 스크롤 포그 ── */}
+      <div className="flex-1 min-h-0 relative">
+        {/* 상단 포그 — 위 불투명(#262626) → 아래 투명. 리스트가 티어 섹션 아래로 페이드인 (Figma 7277-185840) */}
+        <div
+          className="pointer-events-none absolute top-0 left-0 right-0 h-[80px] z-[10]"
+          style={{ background: "linear-gradient(to bottom, rgba(38,38,38,1) 0%, rgba(38,38,38,0.6) 50%, rgba(38,38,38,0) 100%)" }}
+          aria-hidden="true"
+        />
+        <div
+          className="h-full overflow-y-auto [&::-webkit-scrollbar]:hidden"
+          style={{ scrollbarWidth: "none" }}
+        >
+          <div className="flex flex-col gap-[4px] px-[14px] py-[8px]">
+            {rankData.map((item) => (
+              <RankRow key={item.rank} item={item} tick={tick} />
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* ── Bottom nav ── */}
-      <BottomNav
-        activeTab="timer"
-        onTimer={onNavigateToTimer}
-        onYesterday={onNavigateToYesterday}
-        onTodo={onNavigateToTodo}
+      {/* ── 하단 스크롤 포그 (리스트 페이드아웃) ── */}
+      <div
+        className="pointer-events-none absolute left-0 right-0 bottom-[34px] h-[72px] z-[10]"
+        style={{ background: "linear-gradient(to bottom, rgba(38,38,38,0) 0%, var(--color-bg-weak) 100%)" }}
+        aria-hidden="true"
       />
+
+      {/* ── Safe area ── */}
+      <div className="h-[34px] shrink-0 bg-[var(--color-bg-weak)]" />
 
       {/* ── Grade info popup ── */}
       {showGradeInfo && (

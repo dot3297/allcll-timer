@@ -11,7 +11,8 @@
  * - 전체 뷰: 카테고리별 그룹으로 할일 목록 표시
  * - SharedCalendar 연동: 완료 할일 비율로 아크 채움 비율(progressData) 계산하여 전달
  * - 설정 아이콘: SettingsScreen으로 이동
- * - 카테고리 추가: CategoryAddPopup, 전체 삭제: ConfirmPopup 연동
+ * - 카테고리 추가: CategoryAddPopup 연동
+ * - 완료된 할일은 각 카테고리 그룹 하단에 표시 (별도 완료 섹션/전체 삭제 없음)
  *
  * ## 현재 상태 (TODO)
  * - [ ] 서버 API 연동 (현재 로컬 state로만 관리)
@@ -19,7 +20,7 @@
 import { useState, useEffect, useRef } from "react";
 import svgPaths from "../../imports/할일-2/svg-sh8v04ggfj";
 import CategoryAddPopup from "./CategoryAddPopup";
-import ConfirmPopup from "./ConfirmPopup";
+import CategoryDuplicatePopup from "./CategoryDuplicatePopup";
 import SettingsScreen from "./SettingsScreen";
 import TodoEditSheet from "./TodoEditSheet";
 import BottomNav from "./BottomNav";
@@ -61,9 +62,11 @@ function StatusBar() {
 function Header({
   onBack,
   onStats,
+  onSettings,
 }: {
   onBack: () => void;
   onStats: () => void;
+  onSettings: (rect: DOMRect) => void;
 }) {
   return (
     <div className="h-[56px] shrink-0 w-full">
@@ -86,6 +89,19 @@ function Header({
                 <path d={svgPaths.p2a59a680} fill="#D8D8D8" />
               </svg>
             </div>
+          </button>
+
+          {/* 설정(톱니) 버튼 → 카테고리 추가/편집 메뉴 */}
+          <button
+            type="button"
+            onClick={(e) => onSettings((e.currentTarget as HTMLElement).getBoundingClientRect())}
+            aria-label="카테고리 설정"
+            className="size-[24px] relative active:opacity-70 transition-opacity"
+            data-name="settings-btn"
+          >
+            <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+              <path d={svgPaths.p1c54e880} fill="#D8D8D8" />
+            </svg>
           </button>
         </div>
       </div>
@@ -111,6 +127,23 @@ export default function TodoScreen({
   // by the currently-active chip. "전체" is a virtual filter that shows everything,
   // so todos created while on "전체" carry "전체" as their category.
   type TodoItem = { id: string; text: string; done: boolean; category: string; date: string };
+  // 카테고리 숨김 규칙 (날짜 범위)
+  type HideRule = { kind: "all" } | { kind: "from"; date: string } | { kind: "until"; date: string };
+  // 특정 날짜에 카테고리가 숨겨지는지 판정
+  const isCategoryHiddenOn = (rule: HideRule | undefined, dateStr: string): boolean => {
+    if (!rule) return false;
+    if (rule.kind === "all") return true;
+    if (rule.kind === "from") return dateStr >= rule.date;
+    return dateStr < rule.date; // until
+  };
+  // 카테고리 키 → 표시 이름 (동일 이름 신규 생성 카테고리는 키가 이름과 다르다)
+  const displayCat = (key: string) => categoryName[key] ?? key;
+  // 특정 날짜에 카테고리가 보이는지: 생성일 이후(>=)이고 숨김 규칙에 안 걸려야 표시.
+  const isCategoryVisibleOn = (key: string, dateStr: string) => {
+    const created = categoryCreated[key];
+    if (created && dateStr < created) return false; // 생성 전이면 존재하지 않음
+    return !isCategoryHiddenOn(categoryHide[key], dateStr);
+  };
 
   // Stores the ID of a todo that should be focused after the next render.
   // Using a ref (not state) so it doesn't trigger an extra render cycle.
@@ -131,14 +164,28 @@ export default function TodoScreen({
   const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(true);
   // 캘린더에서 선택된 날짜 — null이면 전체 표시
   const [selectedDate, setSelectedDate] = useState<{ year: number; month: number; day: number } | null>(null);
-  // Empty default state matching Figma 6324-228262: no user categories yet, "전체" is active.
+  // Figma 7221-33867: 기본으로 카테고리 칩 3개가 노출된다. (사용자는 이름 수정/삭제 가능)
   const [activeCategory, setActiveCategory] = useState<string>("전체");
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([
+    "카테고리 1",
+    "카테고리 2",
+    "카테고리 3",
+  ]);
   // Categories the user has hidden from the chip row / group view (not deleted —
   // the data is preserved, they just don't appear in the main timeline).
-  const [hiddenCategories, setHiddenCategories] = useState<string[]>([]);
+  // 카테고리별 숨김 규칙. 키가 없으면 모든 날짜에서 표시.
+  //   { kind: 'all' }          → 모든 날짜에서 숨김
+  //   { kind: 'from', date }   → 그 날짜 이후(>=)부터 숨김 (오늘부터 숨기기 → 과거는 표시)
+  //   { kind: 'until', date }  → 그 날짜 이전(<)까지 숨김 (오늘부터 숨김 해제 → 과거는 계속 숨김)
+  const [categoryHide, setCategoryHide] = useState<Record<string, HideRule>>({});
+  // 카테고리 표시 이름 맵. 키가 표시이름과 다른 경우(동일 이름 신규 생성)만 항목을 둔다.
+  // 항목이 없으면 키 자체가 표시 이름.
+  const [categoryName, setCategoryName] = useState<Record<string, string>>({});
+  // 카테고리 생성일(YYYY-MM-DD). 사용자가 생성한 카테고리에만 기록.
+  // 생성일 이전 날짜에는 해당 카테고리가 존재하지 않은 것으로 보고 표시하지 않는다.
+  // (시드 카테고리는 항목 없음 → 모든 날짜에서 표시)
+  const [categoryCreated, setCategoryCreated] = useState<Record<string, string>>({});
   const [showCategoryPopup, setShowCategoryPopup] = useState(false);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
@@ -152,64 +199,133 @@ export default function TodoScreen({
   // Tracks the most recently created (empty) todo so it stays visible in the 전체
   // view until the user types something or taps away.
   const [newTodoId, setNewTodoId] = useState<string | null>(null);
+  // 완료한 할일 숨기기 토글 — true면 각 카테고리 그룹에서 완료 행을 렌더하지 않는다.
+  const [hideCompleted, setHideCompleted] = useState(false);
+  // 동일 이름 카테고리 추가 시 확인 팝업 — { name: 표시이름, existingKey: 기존 카테고리 키 }
+  const [dupCategory, setDupCategory] = useState<{ name: string; existingKey: string } | null>(null);
   const [todos, setTodos] = useState<TodoItem[]>([]);
 
   const addCategory = (name: string) => {
-    setCategories((prev) => (prev.includes(name) ? prev : [...prev, name]));
-    // 나가는 카테고리(activeCategory)의 빈 투두만 정리.
-    // 다른 카테고리의 빈 투두는 그대로 유지해야 해당 카테고리로 돌아왔을 때 입력칸이 남아있다.
-    const outgoing = activeCategory;
-    setTodos((prev) => prev.filter((t) => t.text.trim() || t.category !== outgoing));
-    setActiveCategory(name);
     setShowCategoryPopup(false);
-    // 한국어 IME 조합 버그 방지: 카테고리 입력창에서 마지막 글자(예: "피")의 조합 이벤트가
-    // 새 투두 인풋으로 전파되지 않도록 포커스를 짧게 지연시킨다.
-    setTimeout(() => addTodo(name), 100);
+    // 표시 이름이 같은 기존 카테고리가 있으면 확인 팝업을 띄운다.
+    const existingKey = categories.find((c) => displayCat(c) === name);
+    if (existingKey) {
+      setDupCategory({ name, existingKey });
+      return;
+    }
+    setCategories((prev) => [...prev, name]);
+    // 생성일 = 오늘. (생성일 이전 날짜에는 표시되지 않음)
+    setCategoryCreated((prev) => ({ ...prev, [name]: todayStr }));
+    // 빈 투두(텍스트 없는 입력칸)는 모두 정리 — 새 카테고리만 추가하고 할일 인풋은 만들지 않는다.
+    setTodos((prev) => prev.filter((t) => t.text.trim()));
   };
 
-  // Mark a batch of categories as hidden. If the currently-active chip is in the
-  // batch, reset to "전체" so the user isn't stranded on a non-visible chip.
-  const hideCategories = (list: string[]) => {
+  // 중복 팝업 "네" — 기존 카테고리 사용. 숨겨져 있으면 다시 보이게(규칙 제거).
+  const useExistingCategory = (existingKey: string) => {
+    setCategoryHide((prev) => {
+      if (!(existingKey in prev)) return prev;
+      const next = { ...prev };
+      delete next[existingKey];
+      return next;
+    });
+    setDupCategory(null);
+  };
+
+  // 중복 팝업 "아니요" — 같은 이름의 신규 카테고리 생성.
+  // 기존 카테고리: 오늘부터 숨김({from: 오늘}) → 과거 데이터는 그대로 유지.
+  // 신규 카테고리: 생성일=오늘 → 생성 전(과거) 날짜에는 표시되지 않음.
+  const createDuplicateCategory = (name: string, existingKey: string) => {
+    const newKey = `dup-${Date.now()}-${Math.floor(performance.now())}`;
+    setCategories((prev) => [...prev, newKey]);
+    setCategoryName((prev) => ({ ...prev, [newKey]: name }));
+    setCategoryCreated((prev) => ({ ...prev, [newKey]: todayStr }));
+    setCategoryHide((prev) => ({
+      ...prev,
+      [existingKey]: { kind: "from", date: todayStr },
+    }));
+    setTodos((prev) => prev.filter((t) => t.text.trim()));
+    setDupCategory(null);
+  };
+
+  // 카테고리 숨기기. mode 'today' → 오늘부터 숨김(과거 표시), 'all' → 전체 숨김.
+  const hideCategories = (list: string[], mode: "today" | "all" = "all") => {
     if (list.length === 0) return;
-    setHiddenCategories((prev) => Array.from(new Set([...prev, ...list])));
+    const rule: HideRule = mode === "today" ? { kind: "from", date: todayStr } : { kind: "all" };
+    setCategoryHide((prev) => {
+      const next = { ...prev };
+      for (const c of list) next[c] = rule;
+      return next;
+    });
     if (list.includes(activeCategory)) setActiveCategory("전체");
   };
 
-  // Remove from hidden — categories become visible again in the chip row.
-  const unhideCategories = (list: string[]) => {
+  // 카테고리 숨김 해제. mode 'all' → 규칙 제거(모든 날짜 표시),
+  // mode 'today' → 오늘 이후만 표시하고 과거는 계속 숨김({ until: 오늘 }).
+  const unhideCategories = (list: string[], mode: "today" | "all" = "all") => {
     if (list.length === 0) return;
-    const set = new Set(list);
-    setHiddenCategories((prev) => prev.filter((c) => !set.has(c)));
+    setCategoryHide((prev) => {
+      const next = { ...prev };
+      for (const c of list) {
+        if (mode === "all") delete next[c];
+        else next[c] = { kind: "until", date: todayStr };
+      }
+      return next;
+    });
   };
 
-  // Delete categories entirely. Removes them from the categories list AND from
-  // hiddenCategories, and drops every todo that belonged to them.
+  // Delete categories entirely. Removes them from categories, hide rules, and todos.
   const deleteCategories = (list: string[]) => {
     if (list.length === 0) return;
     const set = new Set(list);
     setCategories((prev) => prev.filter((c) => !set.has(c)));
-    setHiddenCategories((prev) => prev.filter((c) => !set.has(c)));
+    setCategoryHide((prev) => {
+      const next = { ...prev };
+      for (const c of list) delete next[c];
+      return next;
+    });
+    setCategoryName((prev) => {
+      const next = { ...prev };
+      for (const c of list) delete next[c];
+      return next;
+    });
+    setCategoryCreated((prev) => {
+      const next = { ...prev };
+      for (const c of list) delete next[c];
+      return next;
+    });
     setTodos((prev) => prev.filter((t) => !set.has(t.category)));
     if (list.includes(activeCategory)) setActiveCategory("전체");
   };
 
-  // Rename a category: update categories list, hiddenCategories, todos, and
-  // activeCategory (if that category is currently selected).
-  const renameCategory = (oldName: string, newName: string) => {
-    if (!newName.trim() || oldName === newName) return;
-    setCategories((prev) => prev.map((c) => (c === oldName ? newName : c)));
-    setHiddenCategories((prev) => prev.map((c) => (c === oldName ? newName : c)));
-    setTodos((prev) => prev.map((t) => t.category === oldName ? { ...t, category: newName } : t));
-    if (activeCategory === oldName) setActiveCategory(newName);
+  // Rename a category. 'oldKey' 는 카테고리 키.
+  const renameCategory = (oldKey: string, newName: string) => {
+    if (!newName.trim()) return;
+    // 동일 이름 신규로 만들어진 카테고리(키 != 표시이름)는 표시 이름 맵만 갱신한다.
+    if (oldKey in categoryName) {
+      if (categoryName[oldKey] === newName) return;
+      setCategoryName((prev) => ({ ...prev, [oldKey]: newName }));
+      return;
+    }
+    // 일반 카테고리: 키 자체(=표시 이름)를 변경.
+    if (oldKey === newName) return;
+    setCategories((prev) => prev.map((c) => (c === oldKey ? newName : c)));
+    setCategoryHide((prev) => {
+      if (!(oldKey in prev)) return prev;
+      const next = { ...prev };
+      next[newName] = next[oldKey];
+      delete next[oldKey];
+      return next;
+    });
+    setCategoryCreated((prev) => {
+      if (!(oldKey in prev)) return prev;
+      const next = { ...prev };
+      next[newName] = next[oldKey];
+      delete next[oldKey];
+      return next;
+    });
+    setTodos((prev) => prev.map((t) => t.category === oldKey ? { ...t, category: newName } : t));
+    if (activeCategory === oldKey) setActiveCategory(newName);
   };
-
-  // Reorder: replace the full categories array (comes from SettingsScreen drag).
-  const reorderCategories = (newOrder: string[]) => {
-    setCategories(newOrder);
-  };
-
-  // Categories the user can actually see / pick in the main UI.
-  const visibleCategories = categories.filter((c) => !hiddenCategories.includes(c));
 
   // Prepend a new empty todo so the latest item appears at the top, then focus it.
   // Without an arg the todo inherits the active category chip; in the 전체 grouped
@@ -224,6 +340,14 @@ export default function TodoScreen({
   const selectedDateStr = selectedDate
     ? `${selectedDate.year}-${String(selectedDate.month + 1).padStart(2, "0")}-${String(selectedDate.day).padStart(2, "0")}`
     : null;
+
+  // 현재 보고 있는 날짜 기준으로 그룹에 노출할 카테고리 (생성일 + 숨김 규칙 적용).
+  const viewedDateStr = selectedDateStr ?? todayStr;
+  const visibleCategories = categories.filter((c) => isCategoryVisibleOn(c, viewedDateStr));
+  // 편집 화면의 "표시중 / 숨김" 분류 기준 — 오늘 시점에 숨겨져 있으면 숨김으로 본다.
+  const hiddenTodayCategories = categories.filter((c) =>
+    isCategoryHiddenOn(categoryHide[c], todayStr),
+  );
 
   const updateTodo = (id: string, patch: Partial<TodoItem>) =>
     setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
@@ -247,27 +371,8 @@ export default function TodoScreen({
     setTodoMenu(null);
   };
 
-  // Auto-add and focus an empty todo when the screen first mounts so the keyboard
-  // pops up immediately on entry.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { addTodo(); }, []);
-
-  // "전체 삭제" on the 완료 section — clears only the completed todos currently visible
-  // (category filter + date filter 모두 적용).
-  const clearCompleted = () =>
-    setTodos((prev) =>
-      prev.filter((t) => {
-        if (!t.done) return true;
-        // 날짜 필터 중이면 해당 날짜가 아닌 완료 투두는 유지
-        if (selectedDateStr && t.date !== selectedDateStr) return true;
-        if (activeCategory === "전체") return false;
-        return t.category !== activeCategory;
-      }),
-    );
-
-  // The "section label" shown above the todo input.
-  // For now it mirrors the active category; matches the figma which shows "전체" when 전체 is active.
-  const sectionLabel = activeCategory;
+  // 진입 시 자동 입력칸을 띄우지 않는다. 사용자가 카테고리 칩의 "+"를 눌러야
+  // 해당 그룹 아래에 "할일을 추가해 보세요" 입력칸이 나타난다. (Figma: 기본은 칩만 표시)
 
   // Split todos into active (not done) and completed, filtered by the active chip.
   // "전체" is a virtual catch-all — it shows every todo regardless of category.
@@ -291,32 +396,6 @@ export default function TodoScreen({
           (t) => t.id === newTodoId && (!t.text.trim() || inlineFocusId === t.id)
         ) ?? null)
       : null;
-
-  // 특정 카테고리 뷰에서 상단에 고정할 입력 행.
-  // 우선순위: ① 현재 포커스 중인 투두(타이핑 중 input이 unmount되지 않도록) → ② 빈 투두 → ③ null(추가 버튼)
-  const pinnedCategoryTodo: TodoItem | null = (() => {
-    if (activeCategory === "전체") return null;
-    if (inlineFocusId) {
-      const focused = activeTodos.find((t) => t.id === inlineFocusId);
-      if (focused) return focused;
-    }
-    return activeTodos.find((t) => !t.text.trim()) ?? null;
-  })();
-
-  // In the "전체" view we group active todos by category.
-  // pinnedNewTodo 는 이미 상단에 따로 렌더되므로 여기서 제외한다.
-  const activeGroups: { category: string; todos: TodoItem[] }[] = (() => {
-    if (activeCategory !== "전체") return [];
-    const order = ["전체", ...visibleCategories];
-    return order
-      .map((cat) => ({
-        category: cat,
-        todos: activeTodos.filter(
-          (t) => t.category === cat && t.text.trim() && t.id !== pinnedNewTodo?.id
-        ),
-      }))
-      .filter((g) => g.todos.length > 0);
-  })();
 
   // Reusable row JSX so both flat and grouped renderings share one implementation.
   // Tapping a row whose text is non-empty opens the edit bottom sheet;
@@ -357,7 +436,7 @@ export default function TodoScreen({
           if (e.key === "Enter") {
             e.preventDefault();
             e.currentTarget.blur();
-            if (todo.text.trim()) addTodo();
+            if (todo.text.trim()) addTodo(todo.category);
           }
           if (e.key === "Escape") e.currentTarget.blur();
           if (e.key === "Backspace" && todo.text === "") {
@@ -389,6 +468,50 @@ export default function TodoScreen({
     </div>
   );
 
+  // 완료된 할일 행 — 각 카테고리 그룹 하단에 렌더. (체크 채움 + 취소선)
+  const renderDoneRow = (todo: TodoItem) => (
+    <div
+      key={todo.id}
+      className="shrink-0 bg-[var(--color-bg-muted)] rounded-[8px] h-[40px] flex items-center gap-[8px] px-[12px]"
+      data-name="todo-row-done"
+    >
+      <button
+        type="button"
+        onClick={() => updateTodo(todo.id, { done: !todo.done })}
+        aria-label="완료 취소"
+        className="size-[24px] flex items-center justify-center shrink-0"
+      >
+        <div className="size-[18px] rounded-[4px] flex items-center justify-center bg-[var(--color-bg-brand)]">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+            <path d="M1.5 5.2L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </button>
+      <p
+        className="flex-1 min-w-0 font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-disable)] line-through overflow-hidden whitespace-nowrap text-ellipsis"
+        title={todo.text}
+      >
+        {todo.text || " "}
+      </p>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          setTodoMenu({ id: todo.id, x: window.innerWidth - rect.right, y: rect.bottom });
+        }}
+        className="shrink-0 size-[24px] flex items-center justify-center active:opacity-70 transition-opacity"
+        aria-label="더보기"
+      >
+        <svg width="16" height="4" viewBox="0 0 16 4" fill="none">
+          <circle cx="2" cy="2" r="1.5" fill="var(--color-fg-text-disable)" />
+          <circle cx="8" cy="2" r="1.5" fill="var(--color-fg-text-disable)" />
+          <circle cx="14" cy="2" r="1.5" fill="var(--color-fg-text-disable)" />
+        </svg>
+      </button>
+    </div>
+  );
+
   return (
     <div className="bg-[var(--color-bg-weak)] h-full w-full relative overflow-clip" data-name="할일">
       {/* Header block: rounded bottom corners, contains status / title / calendar */}
@@ -400,6 +523,9 @@ export default function TodoScreen({
         <Header
           onBack={onBack}
           onStats={() => setShowStats(true)}
+          onSettings={(rect) =>
+            setEditMenu({ right: window.innerWidth - rect.right, top: rect.bottom + 4 })
+          }
         />
         <SharedCalendar
           theme="dark"
@@ -436,213 +562,91 @@ export default function TodoScreen({
           isCalendarCollapsed ? "top-[194px]" : "top-[502px]"
         }`}
       >
-        {/* Chip row: scrollable chips with sticky "편집" button on right. */}
-        <div className="relative h-[48px] w-full shrink-0 overflow-hidden">
-          {/* Scrollable category chips */}
-          <div
-            className="absolute left-[16px] right-[80px] top-0 bottom-0 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden"
-            style={{ scrollbarWidth: "none" }}
-            data-name="chip-scroll"
-          >
-            <div className="flex gap-[8px] items-center py-[8px] min-w-max h-full">
-              {/* "카테고리 전체" chip — always visible */}
+        {/* Todo list — Figma 7267:119045: 카테고리별 세로 그룹. 각 그룹 = 회색 "카테고리" 칩 헤더 + 할일들.
+            (필터 칩 행/편집 버튼은 제거 — 카테고리 관리는 헤더 톱니로 이동) */}
+        <div className="px-[16px] mt-[8px] flex-1 min-h-0 flex flex-col relative">
+          {/* 완료 숨기기/보기 — 첫 카테고리 칩과 같은 라인 우측에 고정 (완료 항목이 있을 때만 표시) */}
+          {completedTodos.length > 0 && (
               <button
                 type="button"
-                onClick={() => setActiveCategory("전체")}
-                className={`h-[32px] px-[12px] py-[6px] rounded-[36px] shrink-0 inline-flex items-center justify-center transition-colors ${
-                  activeCategory === "전체"
-                    ? "bg-[var(--color-bg-muted)] border border-[var(--color-fg-text-muted)]"
-                    : "border border-[var(--color-fg-text-disable)] bg-transparent"
-                }`}
+                onClick={() => setHideCompleted((v) => !v)}
+                className="absolute top-[5px] right-[16px] z-[20] flex items-center gap-[2px] px-[8px] py-[4px] rounded-[4px] active:opacity-70 transition-opacity"
+                data-name="toggle-completed"
+                aria-pressed={hideCompleted}
               >
-                <span
-                  className={`font-['Pretendard:Medium',sans-serif] text-[14px] whitespace-nowrap ${
-                    activeCategory === "전체" ? "text-white" : "text-[var(--color-fg-text-muted)]"
-                  }`}
-                >
-                  카테고리 전체
+                {/* Figma 7290-114025 — 채워진 눈 아이콘 (보기) / 눈+슬래시 (숨기기) */}
+                <svg className="size-[12px] shrink-0" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <g transform="translate(0.5 2.15)" fill="var(--color-fg-text-subtle)">
+                    <path d="M5.5 0C8.15 0 10.2 2.2876 11 4.2876C10.2 6.28754 7.64996 7.7002 5.5 7.7002C3.35004 7.7002 0.800047 6.28754 0 4.2876C0.8 2.2876 2.85 0 5.5 0ZM5.5 0.799805C4.4154 0.799805 3.41976 1.2671 2.58154 1.99707C1.83588 2.64645 1.2476 3.47755 0.875488 4.27783C1.2327 4.96052 1.86368 5.58315 2.65527 6.05762C3.55418 6.59636 4.58852 6.8999 5.5 6.8999C6.41148 6.8999 7.44582 6.59636 8.34473 6.05762C9.13625 5.58319 9.7668 4.96044 10.124 4.27783C9.7519 3.47761 9.16406 2.6464 8.41846 1.99707C7.58024 1.2671 6.5846 0.799805 5.5 0.799805Z" />
+                    <path d="M7.2002 3.8501C7.2002 2.94193 6.40817 2.1499 5.5 2.1499C4.59183 2.1499 3.7998 2.94193 3.7998 3.8501C3.7998 4.76871 4.5522 5.55029 5.5 5.55029V6.3501C4.1 6.3501 3 5.2001 3 3.8501C3 2.5001 4.15 1.3501 5.5 1.3501C6.85 1.3501 8 2.5001 8 3.8501C8 5.2001 6.9 6.3501 5.5 6.3501V5.55029C6.4478 5.55029 7.2002 4.76871 7.2002 3.8501Z" />
+                  </g>
+                  {!hideCompleted && (
+                    <>
+                      <path d="M2 2L10 10" stroke="var(--color-bg-weak)" strokeWidth="2.6" strokeLinecap="round" />
+                      <path d="M2 2L10 10" stroke="var(--color-fg-text-subtle)" strokeWidth="1.2" strokeLinecap="round" />
+                    </>
+                  )}
+                </svg>
+                <span className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-[var(--color-fg-text-subtle)] whitespace-nowrap">
+                  {hideCompleted ? "완료 보기" : "완료 숨기기"}
                 </span>
               </button>
-              {visibleCategories.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setActiveCategory(cat)}
-                  className={`h-[32px] px-[12px] py-[6px] rounded-[36px] shrink-0 inline-flex items-center justify-center transition-colors ${
-                    activeCategory === cat
-                      ? "bg-[var(--color-bg-muted)] border border-[var(--color-fg-text-muted)]"
-                      : "border border-[var(--color-fg-text-disable)] bg-transparent"
-                  }`}
-                >
-                  <span
-                    className={`font-['Pretendard:Medium',sans-serif] text-[14px] whitespace-nowrap ${
-                      activeCategory === cat ? "text-white" : "text-[var(--color-fg-text-muted)]"
-                    }`}
-                  >
-                    {cat}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* "편집" button fixed to the right — opens SettingsScreen */}
+          )}
           <div
-            className="absolute bg-[var(--color-bg-weak)] flex gap-[0] h-[48px] items-center pl-[8px] pr-[16px] right-0 top-0"
-            data-name="fixed"
-          >
-            <button
-              type="button"
-              onClick={(e) => {
-                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                setEditMenu({ right: window.innerWidth - rect.right, top: rect.bottom + 4 });
-              }}
-              className="flex items-center gap-[4px] active:opacity-70 transition-opacity"
-              aria-label="카테고리 편집"
-              data-name="Button/text button"
-            >
-              <span className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-weak)]">
-                편집
-              </span>
-              <svg className="size-[16px] shrink-0" fill="none" viewBox="0 0 24 24">
-                <path d={svgPaths.p1c54e880} fill="var(--color-fg-text-weak)" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Section header + todo list — flex-1 so it absorbs remaining space, min-h-0 so the
-            inner list's overflow-y-auto actually clips inside the viewport. */}
-        <div className="px-[16px] mt-[8px] flex-1 min-h-0 flex flex-col">
-          <div className="shrink-0 px-[12px] flex items-center h-[36px]">
-            <p className="font-['Pretendard:Medium',sans-serif] text-[var(--color-fg-text-weak)] text-[14px] leading-[21px]">
-              {activeCategory === "전체" ? "카테고리 전체" : activeCategory}
-            </p>
-          </div>
-
-          {/* Todo list — flex-1 fills remaining vertical space, scrolls internally on overflow. */}
-          <div
-            className="mt-[8px] flex-1 min-h-0 flex flex-col gap-[8px] overflow-y-auto pr-[2px] pb-[8px]"
+            className="flex-1 min-h-0 flex flex-col gap-[16px] overflow-y-auto pr-[2px] pb-[8px]"
             data-name="todo-list"
           >
-            {/* Active todos. Layout depends on whether "전체" or a specific category is active. */}
-            {activeCategory === "전체" ? (
-              // "전체" 뷰: 빈 인풋을 최상단에 고정하고, 텍스트 있는 투두는 카테고리 그룹별로 그 아래 나열.
-              <>
-                {/* 빈 인풋 행 — 항상 최상단 */}
-                {pinnedNewTodo && renderActiveRow(pinnedNewTodo)}
-                {/* 텍스트가 있는 투두들 (카테고리 순서대로 평탄하게 나열) */}
-                {activeGroups.map((g) => (
-                  <div
-                    key={g.category}
-                    className="shrink-0 flex flex-col gap-[8px]"
-                    data-name="category-group"
-                    data-category={g.category}
-                  >
-                    {g.todos.map(renderActiveRow)}
-                  </div>
-                ))}
-              </>
-            ) : (
-              // 특정 카테고리 뷰:
-              // ① 빈 입력칸(pinnedCategoryTodo)을 항상 최상단에 고정 — 없으면 "추가" 버튼
-              // ② 텍스트 있는 투두들을 그 아래 나열
-              <>
-                {pinnedCategoryTodo ? (
-                  renderActiveRow(pinnedCategoryTodo)
-                ) : (
-                  <button
-                    type="button"
-                    onClick={addTodo}
-                    className="shrink-0 bg-[var(--color-bg-muted)] rounded-[8px] h-[40px] flex items-center gap-[8px] px-[12px] active:bg-[#404040] transition-colors"
-                    data-name="todo-empty"
-                  >
-                    <div className="size-[24px] flex items-center justify-center shrink-0">
-                      <div className="size-[18px] rounded-[4px] border border-[var(--color-fg-text-disable)]" />
-                    </div>
-                    <p className="font-['Pretendard:Regular',sans-serif] text-[var(--color-fg-text-subtle)] text-[14px] leading-[21px]">
-                      할일을 추가해 보세요
-                    </p>
-                  </button>
-                )}
-                {activeTodos
-                  .filter((t) => t.text.trim() && t.id !== pinnedCategoryTodo?.id)
-                  .map(renderActiveRow)}
-              </>
-            )}
-
-            {completedTodos.length > 0 && (
-              <>
+            {/* 카테고리 그룹: 사용자 카테고리(기본 3개) + "전체"(미분류) 그룹은 할일이 있을 때만 표시.
+                각 그룹마다 회색 칩 헤더 + 할일. */}
+            {(() => {
+              const allHasTodos =
+                activeTodos.some(
+                  (t) => t.category === "전체" && (t.text.trim() || t.id === pinnedNewTodo?.id)
+                ) || completedTodos.some((t) => t.category === "전체");
+              return allHasTodos ? ["전체", ...visibleCategories] : [...visibleCategories];
+            })().map((cat) => {
+              const isAll = cat === "전체";
+              const pinnedHere =
+                pinnedNewTodo && pinnedNewTodo.category === cat ? pinnedNewTodo : null;
+              const groupTodos = activeTodos.filter(
+                (t) => t.category === cat && t.text.trim() && t.id !== pinnedNewTodo?.id
+              );
+              // 완료된 할일은 해당 카테고리 그룹 맨 하단에 표시
+              const groupDone = completedTodos.filter((t) => t.category === cat);
+              return (
                 <div
-                  className="shrink-0 mt-[16px] flex items-center justify-between px-[4px]"
-                  data-name="completed-header"
+                  key={cat}
+                  className="shrink-0 flex flex-col gap-[8px]"
+                  data-name="category-group"
+                  data-category={cat}
                 >
-                  <p className="font-['Pretendard:Medium',sans-serif] text-[var(--color-fg-text-weak)] text-[14px] leading-[21px]">
-                    완료
-                  </p>
+                  {/* 회색 "카테고리" 칩 헤더 (Chips_v2.0) — 탭하면 해당 카테고리에 할일 추가 */}
                   <button
                     type="button"
-                    onClick={() => setShowClearConfirm(true)}
-                    className="flex items-center gap-[2px] active:opacity-70 transition-opacity"
-                    data-name="clear-completed"
+                    onClick={() => addTodo(cat)}
+                    className="self-start h-[32px] px-[12px] py-[4px] rounded-[36px] bg-[var(--color-bg-muted)] inline-flex items-center justify-center gap-[2px] active:opacity-80 transition-opacity"
+                    aria-label={`${isAll ? "전체" : displayCat(cat)}에 할일 추가`}
+                    data-name="category-chip"
                   >
-                    <span className="font-['Pretendard:Medium',sans-serif] text-[var(--color-fg-text-weak)] text-[14px] leading-[21px]">
-                      전체 삭제
+                    <span className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-inverse)] whitespace-nowrap">
+                      {isAll ? "전체" : displayCat(cat)}
                     </span>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <svg className="size-[16px] shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                       <path
-                        d="M3 4h10M5 4V2.5C5 2 5.5 1.5 6 1.5h4c.5 0 1 .5 1 1V4M4 4l.8 9c.05.6.55 1 1.1 1H10c.55 0 1.05-.4 1.1-1L12 4M7 7v5M9 7v5"
-                        stroke="#F9F9FA"
-                        strokeWidth="1.3"
+                        d="M8 3.5V12.5M3.5 8H12.5"
+                        stroke="var(--color-fg-text-inverse)"
+                        strokeWidth="1.4"
                         strokeLinecap="round"
+                        strokeLinejoin="round"
                       />
                     </svg>
                   </button>
+                  {pinnedHere && renderActiveRow(pinnedHere)}
+                  {groupTodos.map(renderActiveRow)}
+                  {!hideCompleted && groupDone.map(renderDoneRow)}
                 </div>
-                {completedTodos.map((todo) => (
-                  <div
-                    key={todo.id}
-                    className="shrink-0 bg-[var(--color-bg-muted)] rounded-[8px] h-[40px] flex items-center gap-[8px] px-[12px]"
-                    data-name="todo-row-done"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => updateTodo(todo.id, { done: !todo.done })}
-                      aria-label="완료 취소"
-                      className="size-[24px] flex items-center justify-center shrink-0"
-                    >
-                      <div className="size-[18px] rounded-[4px] flex items-center justify-center bg-[var(--color-bg-brand)]">
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-                          <path d="M1.5 5.2L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </div>
-                    </button>
-                    <p
-                      className="flex-1 min-w-0 font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-disable)] line-through overflow-hidden whitespace-nowrap text-ellipsis"
-                      title={todo.text}
-                    >
-                      {todo.text || " "}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                        setTodoMenu({ id: todo.id, x: window.innerWidth - rect.right, y: rect.bottom });
-                      }}
-                      className="shrink-0 size-[24px] flex items-center justify-center active:opacity-70 transition-opacity"
-                      aria-label="더보기"
-                    >
-                      <svg width="16" height="4" viewBox="0 0 16 4" fill="none">
-                        <circle cx="2" cy="2" r="1.5" fill="var(--color-fg-text-disable)" />
-                        <circle cx="8" cy="2" r="1.5" fill="var(--color-fg-text-disable)" />
-                        <circle cx="14" cy="2" r="1.5" fill="var(--color-fg-text-disable)" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-              </>
-            )}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -823,15 +827,12 @@ export default function TodoScreen({
         <CategoryAddPopup onCancel={() => setShowCategoryPopup(false)} onConfirm={addCategory} />
       )}
 
-      {/* Confirm popup for "전체 삭제" on the 완료 section */}
-      {showClearConfirm && (
-        <ConfirmPopup
-          title={"완료한 할 일이 모두 지워져요\n정말 삭제할까요?"}
-          onCancel={() => setShowClearConfirm(false)}
-          onConfirm={() => {
-            clearCompleted();
-            setShowClearConfirm(false);
-          }}
+      {/* 동일 이름 카테고리 확인 팝업 */}
+      {dupCategory && (
+        <CategoryDuplicatePopup
+          onUseExisting={() => useExistingCategory(dupCategory.existingKey)}
+          onCreateNew={() => createDuplicateCategory(dupCategory.name, dupCategory.existingKey)}
+          onClose={() => setDupCategory(null)}
         />
       )}
 
@@ -846,12 +847,13 @@ export default function TodoScreen({
       {showSettings && (
         <SettingsScreen
           categories={categories}
-          hiddenCategories={hiddenCategories}
-          onHide={(list) => {
-            hideCategories(list);
+          displayName={displayCat}
+          hiddenCategories={hiddenTodayCategories}
+          onHide={(list, mode) => {
+            hideCategories(list, mode);
           }}
-          onUnhide={(list) => {
-            unhideCategories(list);
+          onUnhide={(list, mode) => {
+            unhideCategories(list, mode);
           }}
           onDelete={(list) => {
             deleteCategories(list);
@@ -860,9 +862,8 @@ export default function TodoScreen({
           onRename={(oldName, newName) => {
             renameCategory(oldName, newName);
           }}
-          onReorder={(newOrder) => {
-            reorderCategories(newOrder);
-          }}
+          onReorder={(newOrder) => setCategories(newOrder)}
+          onAdd={() => setShowCategoryPopup(true)}
           onBack={() => setShowSettings(false)}
         />
       )}
