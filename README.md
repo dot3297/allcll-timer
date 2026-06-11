@@ -2,10 +2,10 @@
 
 > **올클(allcll) 모바일 타이머 앱** — 공부 시간을 기록하고, 랭킹으로 동기부여를 받는 학습 타이머 서비스
 
-[![Vercel](https://img.shields.io/badge/배포-Vercel-black)](https://allcll-timer-be1xezioj-dot3297s-projects.vercel.app)
+[![Vercel](https://img.shields.io/badge/배포-Vercel-black)](https://ollcl-timer.vercel.app)
 [![GitHub](https://img.shields.io/badge/GitHub-allcll--timer-blue)](https://github.com/dot3297/allcll-timer)
 
-**배포 URL:** https://allcll-timer-be1xezioj-dot3297s-projects.vercel.app
+**배포 URL:** https://ollcl-timer.vercel.app
 
 ---
 
