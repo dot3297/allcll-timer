@@ -26,6 +26,17 @@ import TodoEditSheet from "./TodoEditSheet";
 import BottomNav from "./BottomNav";
 import SharedCalendar from "./SharedCalendar";
 import TodoStatsScreen from "./TodoStatsScreen";
+import OfflineBanner from "./OfflineBanner";
+import { useOffline, SYNC_ANIM_MS } from "../contexts/OfflineContext";
+
+/** 동기화 대기 배지 — 오프라인 중 추가/변경된 항목에 표시 */
+function PendingBadge() {
+  return (
+    <span className="shrink-0 px-[6px] h-[18px] flex items-center rounded-[4px] bg-[rgba(255,176,32,0.18)] text-[#ffb020] text-[11px] leading-[16px] font-['Pretendard:Medium',sans-serif] whitespace-nowrap">
+      대기
+    </span>
+  );
+}
 
 
 // ============================================================
@@ -126,7 +137,7 @@ export default function TodoScreen({
   // Each todo remembers the category it was created under so we can filter the list
   // by the currently-active chip. "전체" is a virtual filter that shows everything,
   // so todos created while on "전체" carry "전체" as their category.
-  type TodoItem = { id: string; text: string; done: boolean; category: string; date: string };
+  type TodoItem = { id: string; text: string; done: boolean; category: string; date: string; pending?: boolean };
   // 카테고리 숨김 규칙 (날짜 범위)
   type HideRule = { kind: "all" } | { kind: "from"; date: string } | { kind: "until"; date: string };
   // 특정 날짜에 카테고리가 숨겨지는지 판정
@@ -204,6 +215,22 @@ export default function TodoScreen({
   // 동일 이름 카테고리 추가 시 확인 팝업 — { name: 표시이름, existingKey: 기존 카테고리 키 }
   const [dupCategory, setDupCategory] = useState<{ name: string; existingKey: string } | null>(null);
   const [todos, setTodos] = useState<TodoItem[]>([]);
+
+  // ── 오프라인 모드 (UI 전용) ──
+  // 오프라인 중 추가/완료토글한 항목은 pending(대기) 표시. 온라인 복귀 시 동기화 연출 후 정리.
+  const { isOffline, addPending } = useOffline();
+  const prevOfflineRef = useRef(isOffline);
+  useEffect(() => {
+    if (prevOfflineRef.current && !isOffline) {
+      // 온라인 복귀 — 동기화 완료 연출 시간 뒤 대기 배지 제거
+      const id = window.setTimeout(() => {
+        setTodos((prev) => prev.map((t) => (t.pending ? { ...t, pending: false } : t)));
+      }, SYNC_ANIM_MS);
+      prevOfflineRef.current = isOffline;
+      return () => window.clearTimeout(id);
+    }
+    prevOfflineRef.current = isOffline;
+  }, [isOffline]);
 
   const addCategory = (name: string) => {
     setShowCategoryPopup(false);
@@ -352,6 +379,16 @@ export default function TodoScreen({
   const updateTodo = (id: string, patch: Partial<TodoItem>) =>
     setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
 
+  // 완료 토글 — 오프라인 중이면 동기화 대기(pending)로 표시
+  const toggleTodoDone = (todo: TodoItem) => {
+    if (isOffline) {
+      if (!todo.pending) addPending(1);
+      updateTodo(todo.id, { done: !todo.done, pending: true });
+    } else {
+      updateTodo(todo.id, { done: !todo.done });
+    }
+  };
+
   const removeTodo = (id: string) =>
     setTodos((prev) => prev.filter((t) => t.id !== id));
 
@@ -361,6 +398,8 @@ export default function TodoScreen({
     const todoDate = selectedDateStr ?? todayStr;
     pendingFocusId.current = id;
     setNewTodoId(id);
+    // 항목 추가는 오프라인에서도 "즉시 반영" — 대기 배지 없이 바로 노출 (PDF 기준).
+    // 동기화 대기 표시는 완료 토글에만 적용한다(목업: 오프라인 중 완료한 항목에만 대기 배지).
     setTodos((prev) => [{ id, text: "", done: false, category, date: todoDate }, ...prev]);
   };
 
@@ -414,7 +453,7 @@ export default function TodoScreen({
         type="button"
         onClick={() => {
           if (!todo.text.trim()) return;
-          updateTodo(todo.id, { done: !todo.done });
+          toggleTodoDone(todo);
         }}
         disabled={!todo.text.trim()}
         aria-label="완료"
@@ -447,6 +486,7 @@ export default function TodoScreen({
         className="flex-1 min-w-0 bg-transparent outline-none border-none font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-weak)] placeholder:text-[var(--color-fg-text-muted)] cursor-text"
         data-name="todo-input"
       />
+      {todo.pending && <PendingBadge />}
       {todo.text.trim() && (
         <button
           type="button"
@@ -477,7 +517,7 @@ export default function TodoScreen({
     >
       <button
         type="button"
-        onClick={() => updateTodo(todo.id, { done: !todo.done })}
+        onClick={() => toggleTodoDone(todo)}
         aria-label="완료 취소"
         className="size-[24px] flex items-center justify-center shrink-0"
       >
@@ -493,6 +533,7 @@ export default function TodoScreen({
       >
         {todo.text || " "}
       </p>
+      {todo.pending && <PendingBadge />}
       <button
         type="button"
         onClick={(e) => {
@@ -514,6 +555,7 @@ export default function TodoScreen({
 
   return (
     <div className="bg-[var(--color-bg-weak)] h-full w-full relative overflow-clip" data-name="할일">
+      <OfflineBanner />
       {/* Header block: rounded bottom corners, contains status / title / calendar */}
       <div
         className="absolute left-0 top-0 w-full bg-[var(--color-bg-weak)] flex flex-col items-start rounded-bl-[16px] rounded-br-[16px]"

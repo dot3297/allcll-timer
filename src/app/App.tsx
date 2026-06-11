@@ -6,6 +6,23 @@ import TodoScreen from "./components/TodoScreen";
 import YesterdayScreen from "./components/YesterdayScreen";
 import RankingScreen from "./components/RankingScreen";
 import PomodoroBottomSheet, { type PomodoroSettings } from "./components/PomodoroBottomSheet";
+import { OfflineProvider, useOffline } from "./contexts/OfflineContext";
+
+/** 개발용 온/오프라인 토글 — 오프라인 모드 UI 시연용 (실제 네트워크 감지 아님) */
+function OfflineDevToggle() {
+  const { isOffline, setOffline } = useOffline();
+  return (
+    <button
+      onClick={() => setOffline(!isOffline)}
+      className={`fixed top-[56px] left-[400px] z-[100] px-3 py-2 rounded-full text-xs font-medium shadow-lg transition-colors ${
+        isOffline ? "bg-[#ff6b6b] text-white" : "bg-[#333] text-white"
+      }`}
+      data-name="dev-offline-toggle"
+    >
+      {isOffline ? "✈️ 오프라인 (탭하면 온라인)" : "📶 온라인 (탭하면 오프라인)"}
+    </button>
+  );
+}
 
 /** 숫자가 바뀔 때마다 아래→위로 슬라이드 인 되는 타이머 표시 컴포넌트 */
 function AnimatedTimerDisplay({ seconds }: { seconds: number }) {
@@ -197,7 +214,8 @@ export default function App() {
     : null;
 
   return (
-    <>
+    <OfflineProvider>
+      <OfflineDevToggle />
       {showYesterdayScreen && (
         <div className="fixed inset-0 z-[60] bg-[#262626]">
           <YesterdayScreen
@@ -660,6 +678,6 @@ export default function App() {
         )}
       </div>
       </div>
-    </>
+    </OfflineProvider>
   );
 }
