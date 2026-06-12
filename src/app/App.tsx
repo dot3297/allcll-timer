@@ -8,14 +8,15 @@ import RankingScreen from "./components/RankingScreen";
 import PomodoroBottomSheet, { type PomodoroSettings } from "./components/PomodoroBottomSheet";
 import { OfflineProvider, useOffline } from "./contexts/OfflineContext";
 
-/** 개발용 온/오프라인 토글 — 오프라인 모드 UI 시연용 (실제 네트워크 감지 아님) */
+/** 개발용 온/오프라인 토글 — 오프라인 모드 UI 시연용 (실제 네트워크 감지 아님).
+ *  배너 없는 화면(홈·랭킹)에서도 복귀할 수 있도록 항상 노출한다. */
 function OfflineDevToggle() {
   const { isOffline, setOffline } = useOffline();
   return (
     <button
       onClick={() => setOffline(!isOffline)}
       className={`fixed top-[56px] left-[400px] z-[100] px-3 py-2 rounded-full text-xs font-medium shadow-lg transition-colors ${
-        isOffline ? "bg-[#ff6b6b] text-white" : "bg-[#333] text-white"
+        isOffline ? "bg-[#f37555] text-white" : "bg-[#333] text-white"
       }`}
       data-name="dev-offline-toggle"
     >
@@ -107,6 +108,8 @@ function StatusBar() {
 }
 
 function TaskList({ onTaskClick }: { onTaskClick: () => void }) {
+  // 오프라인 임시 저장된 타이머는 맨 위에 "대기" 배지와 함께 표시 (PDF: 내 타이머 대기 배지)
+  const { pendingTimers } = useOffline();
   const tasks = [
     { name: "아이유 좋아", time: "01:39:01", color: "#F8D884", isPlaying: true },
     { name: "국어 인강", time: "01:39:01", color: "#F8D884", isPlaying: false },
@@ -130,9 +133,15 @@ function TaskList({ onTaskClick }: { onTaskClick: () => void }) {
     { name: "플래너 정리", time: "00:18:00", color: "#D9D2BF", isPlaying: false },
   ];
 
+  // 대기 타이머(오프라인 임시 저장)를 맨 위로, 그 뒤 기존 기록
+  const allTasks = [
+    ...pendingTimers.map((pt) => ({ name: pt.name, time: pt.time, color: "#9678ff", isPlaying: false, pending: !pt.synced })),
+    ...tasks.map((t) => ({ ...t, pending: false })),
+  ];
+
   return (
     <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full">
-      {tasks.map((task, idx) => (
+      {allTasks.map((task, idx) => (
         <div
           key={idx}
           className="content-stretch flex items-center gap-[4px] relative w-full cursor-pointer active:bg-[#F7F7F8] transition-all duration-200 ease-out active:scale-[0.98] rounded-[8px] px-[4px] -mx-[4px]"
@@ -147,7 +156,12 @@ function TaskList({ onTaskClick }: { onTaskClick: () => void }) {
                 </g>
               </svg>
             </div>
-            <p className="[word-break:break-word] flex-[1_0_0] font-['Spoqa_Han_Sans_Neo:Regular',sans-serif] leading-[1.5] min-w-px not-italic overflow-hidden relative text-[#6d7278] text-[14px] text-ellipsis whitespace-nowrap">{task.name}</p>
+            <p className="[word-break:break-word] font-['Spoqa_Han_Sans_Neo:Regular',sans-serif] leading-[1.5] min-w-px not-italic overflow-hidden relative text-[#6d7278] text-[14px] text-ellipsis whitespace-nowrap">{task.name}</p>
+            {task.pending && (
+              <span className="shrink-0 px-[8px] py-[2px] flex items-center rounded-[4px] bg-[#fef1ec] text-[#ff7a68] text-[12px] leading-[18px] font-['Pretendard:Medium',sans-serif] whitespace-nowrap">
+                대기
+              </span>
+            )}
           </div>
           <p className="[word-break:break-word] font-['Pretendard:Medium',sans-serif] leading-[21px] not-italic relative shrink-0 text-[#6d7278] text-[14px] text-right whitespace-nowrap">{task.time}</p>
         </div>

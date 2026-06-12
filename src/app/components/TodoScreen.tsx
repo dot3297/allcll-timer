@@ -29,10 +29,11 @@ import TodoStatsScreen from "./TodoStatsScreen";
 import OfflineBanner from "./OfflineBanner";
 import { useOffline, SYNC_ANIM_MS } from "../contexts/OfflineContext";
 
-/** 동기화 대기 배지 — 오프라인 중 추가/변경된 항목에 표시 */
+/** 동기화 대기 배지 — 오프라인 중 추가/변경된 항목에 표시 (Figma 7357:124409)
+ *  bg/error-subtle(다크: 에러색 저투명 틴트) + fg-text/error(#ff7a68) */
 function PendingBadge() {
   return (
-    <span className="shrink-0 px-[6px] h-[18px] flex items-center rounded-[4px] bg-[rgba(255,176,32,0.18)] text-[#ffb020] text-[11px] leading-[16px] font-['Pretendard:Medium',sans-serif] whitespace-nowrap">
+    <span className="shrink-0 px-[8px] py-[2px] flex items-center rounded-[4px] bg-[rgba(255,122,104,0.16)] text-[var(--color-fg-text-error)] text-[12px] leading-[18px] font-['Pretendard:Medium',sans-serif] whitespace-nowrap">
       대기
     </span>
   );

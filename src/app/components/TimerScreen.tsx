@@ -126,7 +126,7 @@ export default function TimerScreen({
   const [selectedTaskName, setSelectedTaskName] = useState("한국사");
   const [isStopped, setIsStopped] = useState(false);
   // 오프라인 모드 (UI 전용) — 오프라인 중 종료 시 임시저장 다이얼로그 표시
-  const { isOffline, addPending } = useOffline();
+  const { isOffline, addPendingTimer } = useOffline();
   const [showOfflineSave, setShowOfflineSave] = useState(false);
   const [achievementCount, setAchievementCount] = useState(0);
   const [cashCount, setCashCount] = useState(0);
@@ -299,7 +299,9 @@ export default function TimerScreen({
         <ChatBubble isResting={isResting} />
       </div>
 
-      {/* "45분만~" 전체 폭 배너 — backdrop blur 반투명 바 + 끊김 없는 좌측 스크롤 */}
+      {/* "45분만~" 전체 폭 배너 — 실시간 랭킹 진행 메시지(스크롤 티커).
+          오프라인에서는 실시간 랭킹 갱신이 불가하므로 숨긴다(오프라인 배너와 자리도 겹침). */}
+      {!isOffline && (
       <div className="absolute top-[42px] left-0 w-full h-[33px] backdrop-blur-[50px] bg-[rgba(255,255,255,0.1)] overflow-hidden flex items-center">
         <style>{`
           @keyframes bannerScroll {
@@ -325,6 +327,7 @@ export default function TimerScreen({
           ))}
         </div>
       </div>
+      )}
 
       {/* 모드 스위처 — top 91px 중앙 */}
       <div className="absolute top-[91px] left-1/2 -translate-x-1/2 backdrop-blur-[20px] bg-white/10 rounded-[999px] flex items-center p-[4px] shrink-0">
@@ -769,58 +772,52 @@ export default function TimerScreen({
             @keyframes offSavePop { from { transform: scale(0.75); opacity: 0; } to { transform: scale(1); opacity: 1; } }
           `}</style>
           <div
-            className="relative bg-[var(--color-bg-weak)] rounded-[16px] p-[24px] w-[320px] flex flex-col gap-[20px] items-stretch"
+            className="relative bg-[var(--color-bg-weak)] rounded-[16px] p-[24px] w-[320px] flex flex-col gap-[16px] items-center"
             style={{ animation: "offSavePop 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards" }}
           >
-            {/* 오프라인 아이콘 + 제목 */}
-            <div className="flex flex-col gap-[12px] items-center">
-              <div className="size-[44px] rounded-full bg-[rgba(255,107,107,0.15)] flex items-center justify-center">
-                <svg width="24" height="24" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M2 5.5C5.5 2.8 10.5 2.8 14 5.5" stroke="#ff6b6b" strokeWidth="1.4" strokeLinecap="round" />
-                  <path d="M4.3 8.2C6.5 6.5 9.5 6.5 11.7 8.2" stroke="#ff6b6b" strokeWidth="1.4" strokeLinecap="round" />
-                  <circle cx="8" cy="11.5" r="1.1" fill="#ff6b6b" />
-                  <path d="M2 14L14 2" stroke="#ff6b6b" strokeWidth="1.4" strokeLinecap="round" />
-                </svg>
+            <div className="flex flex-col gap-[32px] items-stretch w-full">
+              {/* 제목 + 설명 (Figma 7354:202183) */}
+              <div className="flex flex-col gap-[16px] items-center w-full">
+                <p className="font-['Pretendard:SemiBold',sans-serif] text-[18px] leading-[27px] text-white text-center w-full">
+                  기록을 저장 할까요?
+                </p>
+                <p className="font-['Pretendard:Regular',sans-serif] text-[16px] leading-[24px] text-white text-center w-full">
+                  네트워크 연결이 없어 측정 기록을<br />
+                  임시 저장하면 온라인 복귀 시<br />
+                  자동 업로드됩니다.
+                </p>
               </div>
-              <p className="font-['Pretendard:SemiBold',sans-serif] text-[18px] leading-[27px] text-white text-center">
-                저장하시겠어요?
-              </p>
-              <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-muted)] text-center">
-                네트워크 연결이 없습니다.<br />
-                측정 기록을 임시 저장하면<br />
-                온라인 복귀 시 자동 업로드됩니다.
-              </p>
-            </div>
-            {/* 버튼: 다시 시도(아웃라인) / 임시 저장(브랜드) */}
-            <div className="flex gap-[8px] items-stretch h-[44px]">
-              <button
-                type="button"
-                onClick={() => { setShowOfflineSave(false); setIsStopped(false); }}
-                className="flex-1 rounded-[8px] border border-[var(--color-fg-text-disable)] bg-transparent text-[var(--color-fg-text-weak)] text-[14px] leading-[21px] font-['Pretendard:Medium',sans-serif] active:scale-[0.98] transition-transform"
-              >
-                다시 시도
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  // 임시 저장 — 세션을 동기화 대기로 기록하고 홈으로
-                  addPending(1);
-                  setShowOfflineSave(false);
-                  setIsStopped(false);
-                  const sessionSecs = mainTimer;
-                  setMainTimer(0);
-                  setSubjectTimer(0);
-                  setRestTimer(0);
-                  setIsResting(false);
-                  setPomodoroCount(0);
-                  setPomodoroPhase('focus');
-                  setPomodoroSecsLeft(pomodoroFocusMinutes * 60);
-                  onGoHome?.(sessionSecs);
-                }}
-                className="flex-1 rounded-[8px] bg-[var(--color-bg-brand)] text-white text-[14px] leading-[21px] font-['Pretendard:Medium',sans-serif] active:bg-[var(--color-bg-brand-pressed)] transition-colors"
-              >
-                임시 저장
-              </button>
+              {/* 버튼: 취소(아웃라인) / 임시 저장(브랜드) */}
+              <div className="flex gap-[8px] items-stretch h-[44px] w-full">
+                <button
+                  type="button"
+                  onClick={() => { setShowOfflineSave(false); setIsStopped(false); }}
+                  className="flex-1 rounded-[8px] border border-[var(--color-border-subtle)] bg-transparent text-[var(--color-fg-text-weak)] text-[14px] leading-[21px] font-['Pretendard:Medium',sans-serif] active:scale-[0.98] transition-transform"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // 임시 저장 — 측정 기록을 동기화 대기 타이머로 추가하고 홈으로
+                    addPendingTimer(selectedTaskName, formatTime(mainTimer));
+                    setShowOfflineSave(false);
+                    setIsStopped(false);
+                    const sessionSecs = mainTimer;
+                    setMainTimer(0);
+                    setSubjectTimer(0);
+                    setRestTimer(0);
+                    setIsResting(false);
+                    setPomodoroCount(0);
+                    setPomodoroPhase('focus');
+                    setPomodoroSecsLeft(pomodoroFocusMinutes * 60);
+                    onGoHome?.(sessionSecs);
+                  }}
+                  className="flex-1 rounded-[8px] bg-[var(--color-bg-brand)] text-white text-[14px] leading-[21px] font-['Pretendard:Medium',sans-serif] active:bg-[var(--color-bg-brand-pressed)] transition-colors"
+                >
+                  임시 저장
+                </button>
+              </div>
             </div>
           </div>
         </div>
