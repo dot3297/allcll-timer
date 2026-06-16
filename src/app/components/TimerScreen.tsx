@@ -31,7 +31,6 @@ import BottomNav from "./BottomNav";
 import imgFomoLeaf   from "../../imports/뽀모도로토마토/fomo_leaf.svg";
 import imgFomoTomato from "../../imports/뽀모도로토마토/fomo_tomato.svg";
 import imgMusicOff   from "../../imports/배경음아이콘/music-off.svg";
-import OfflineBanner from "./OfflineBanner";
 import { useOffline } from "../contexts/OfflineContext";
 
 const svgPaths = {
@@ -125,9 +124,22 @@ export default function TimerScreen({
   const [showSubjectSheet, setShowSubjectSheet] = useState(false);
   const [selectedTaskName, setSelectedTaskName] = useState("한국사");
   const [isStopped, setIsStopped] = useState(false);
-  // 오프라인 모드 (UI 전용) — 오프라인 중 종료 시 임시저장 다이얼로그 표시
+  // 오프라인 모드 (UI 전용)
   const { isOffline, addPendingTimer } = useOffline();
-  const [showOfflineSave, setShowOfflineSave] = useState(false);
+  // 오프라인 종료 — 다이얼로그 없이 바로 로컬에 "대기" 기록으로 저장하고 홈으로
+  const saveOfflineRecord = () => {
+    addPendingTimer(selectedTaskName, formatTime(mainTimer));
+    const sessionSecs = mainTimer;
+    setIsStopped(false);
+    setMainTimer(0);
+    setSubjectTimer(0);
+    setRestTimer(0);
+    setIsResting(false);
+    setPomodoroCount(0);
+    setPomodoroPhase('focus');
+    setPomodoroSecsLeft(pomodoroFocusMinutes * 60);
+    onGoHome?.(sessionSecs);
+  };
   const [achievementCount, setAchievementCount] = useState(0);
   const [cashCount, setCashCount] = useState(0);
   const [cashBalance, setCashBalance] = useState(35); // 현재 보유 캐시
@@ -243,8 +255,6 @@ export default function TimerScreen({
 
   return (
     <div className="h-full relative w-full bg-[var(--color-bg-weak)]" data-name="타이머_일반모드">
-      {/* 측정 중이면 배너에 "오프라인 · 측정 중" 표시 (PDF p.4) */}
-      <OfflineBanner offlineLabel={timerMode === 'running' && !isResting && !isStopped ? '측정 중' : undefined} />
       {/* 배경 — 런닝: 영상 / 쉴래요: 정지 이미지 / 시계: 다크 + bg-circle */}
       <div className="absolute inset-0 overflow-hidden">
         {/* 런닝 모드 비디오 — 시계/종료/쉴래요 상태면 숨김 */}
@@ -399,41 +409,47 @@ export default function TimerScreen({
           </div>
         </button>
 
-        {/* 배경음 */}
+        {/* 배경음 — 오프라인 시 비활성화(disable) */}
         <button
           type="button"
-          onClick={() => setShowMusicSheet(true)}
-          className="inline-grid grid-cols-[max-content] grid-rows-[max-content] place-items-start relative shrink-0 active:scale-95 transition-transform"
+          onClick={() => { if (!isOffline) setShowMusicSheet(true); }}
+          disabled={isOffline}
+          className={`inline-grid grid-cols-[max-content] grid-rows-[max-content] place-items-start relative shrink-0 transition-transform ${isOffline ? 'cursor-default' : 'active:scale-95'}`}
           aria-label="배경음"
         >
-          <div className="col-1 row-1 ml-[8px] mt-0 bg-white rounded-full size-[32px] overflow-hidden flex items-center justify-center pointer-events-none">
-            {hasSongSelected ? (
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <path d="M17.5 2.5V12.9167C17.5 13.6902 17.1927 14.4321 16.6457 14.9791C16.0987 15.526 15.3569 15.8333 14.5833 15.8333C13.8098 15.8333 13.0679 15.526 12.5209 14.9791C11.974 14.4321 11.6667 13.6902 11.6667 12.9167C11.6667 12.1431 11.974 11.4013 12.5209 10.8543C13.0679 10.3073 13.8098 10 14.5833 10C15.0333 10 15.4583 10.1 15.8333 10.2833V5.39167L7.5 7.16667V14.5833C7.5 15.3569 7.19271 16.0987 6.64573 16.6457C6.09875 17.1927 5.35688 17.5 4.58333 17.5C3.80979 17.5 3.06792 17.1927 2.52094 16.6457C1.97396 16.0987 1.66667 15.3569 1.66667 14.5833C1.66667 13.8098 1.97396 13.0679 2.52094 12.5209C3.06792 11.974 3.80979 11.6667 4.58333 11.6667C5.03333 11.6667 5.45833 11.7667 5.83333 11.95V5L17.5 2.5Z" fill="var(--color-fg-text-solid-muted)"/>
-              </svg>
-            ) : (
-              <img src={imgMusicOff} alt="배경음 없음" width={20} height={20} />
-            )}
+          <div className={`col-1 row-1 ml-[8px] mt-0 rounded-full size-[32px] overflow-hidden flex items-center justify-center pointer-events-none ${isOffline ? 'bg-[#333]' : 'bg-white'}`}>
+            <span className="flex items-center justify-center" style={{ filter: isOffline ? 'brightness(0) invert(0.5)' : undefined }}>
+              {hasSongSelected ? (
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                  <path d="M17.5 2.5V12.9167C17.5 13.6902 17.1927 14.4321 16.6457 14.9791C16.0987 15.526 15.3569 15.8333 14.5833 15.8333C13.8098 15.8333 13.0679 15.526 12.5209 14.9791C11.974 14.4321 11.6667 13.6902 11.6667 12.9167C11.6667 12.1431 11.974 11.4013 12.5209 10.8543C13.0679 10.3073 13.8098 10 14.5833 10C15.0333 10 15.4583 10.1 15.8333 10.2833V5.39167L7.5 7.16667V14.5833C7.5 15.3569 7.19271 16.0987 6.64573 16.6457C6.09875 17.1927 5.35688 17.5 4.58333 17.5C3.80979 17.5 3.06792 17.1927 2.52094 16.6457C1.97396 16.0987 1.66667 15.3569 1.66667 14.5833C1.66667 13.8098 1.97396 13.0679 2.52094 12.5209C3.06792 11.974 3.80979 11.6667 4.58333 11.6667C5.03333 11.6667 5.45833 11.7667 5.83333 11.95V5L17.5 2.5Z" fill="var(--color-fg-text-solid-muted)"/>
+                </svg>
+              ) : (
+                <img src={imgMusicOff} alt="배경음 없음" width={20} height={20} />
+              )}
+            </span>
           </div>
-          <div className="col-1 row-1 ml-0 mt-[27px] bg-[var(--color-bg-brand-hover)] flex items-center justify-center px-[8px] py-[2px] rounded-full w-[48px] pointer-events-none">
-            <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-white whitespace-nowrap">배경음</p>
+          <div className={`col-1 row-1 ml-0 mt-[27px] flex items-center justify-center px-[8px] py-[2px] rounded-full w-[48px] pointer-events-none ${isOffline ? 'bg-[#333]' : 'bg-[var(--color-bg-brand-hover)]'}`}>
+            <p className={`font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] whitespace-nowrap ${isOffline ? 'text-[var(--color-fg-text-disable)]' : 'text-white'}`}>배경음</p>
           </div>
         </button>
 
-        {/* 설정 */}
+        {/* 설정 — 오프라인 시 비활성화(disable) */}
         <button
           type="button"
-          onClick={() => setShowSettingsSheet(true)}
-          className="inline-grid grid-cols-[max-content] grid-rows-[max-content] place-items-start relative shrink-0 active:scale-95 transition-transform"
+          onClick={() => { if (!isOffline) setShowSettingsSheet(true); }}
+          disabled={isOffline}
+          className={`inline-grid grid-cols-[max-content] grid-rows-[max-content] place-items-start relative shrink-0 transition-transform ${isOffline ? 'cursor-default' : 'active:scale-95'}`}
           aria-label="설정"
         >
-          <div className="col-1 row-1 ml-[8px] mt-0 bg-white rounded-full size-[32px] overflow-hidden flex items-center justify-center pointer-events-none">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" fill="var(--color-fg-text-solid-muted)" />
-            </svg>
+          <div className={`col-1 row-1 ml-[8px] mt-0 rounded-full size-[32px] overflow-hidden flex items-center justify-center pointer-events-none ${isOffline ? 'bg-[#333]' : 'bg-white'}`}>
+            <span className="flex items-center justify-center" style={{ filter: isOffline ? 'brightness(0) invert(0.5)' : undefined }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" fill="var(--color-fg-text-solid-muted)" />
+              </svg>
+            </span>
           </div>
-          <div className="col-1 row-1 ml-0 mt-[27px] bg-[var(--color-bg-brand-hover)] flex items-center justify-center px-[8px] py-[2px] rounded-full w-[48px] pointer-events-none">
-            <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-white whitespace-nowrap">설정</p>
+          <div className={`col-1 row-1 ml-0 mt-[27px] flex items-center justify-center px-[8px] py-[2px] rounded-full w-[48px] pointer-events-none ${isOffline ? 'bg-[#333]' : 'bg-[var(--color-bg-brand-hover)]'}`}>
+            <p className={`font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] whitespace-nowrap ${isOffline ? 'text-[var(--color-fg-text-disable)]' : 'text-white'}`}>설정</p>
           </div>
         </button>
 
@@ -590,7 +606,7 @@ export default function TimerScreen({
             </div>
             {/* 종료 버튼 (단일 · full-width) */}
             <button
-              onClick={() => { setIsStopped(true); if (isOffline) setShowOfflineSave(true); else setShowEndPopup(true); }}
+              onClick={() => { if (isOffline) { saveOfflineRecord(); } else { setIsStopped(true); setShowEndPopup(true); } }}
               className="w-full h-[56px] bg-[var(--color-fg-text-disable)] rounded-[8px] cursor-pointer active:bg-[#404040] transition-colors"
             >
               <div className="flex flex-row items-center justify-center size-full">
@@ -639,7 +655,7 @@ export default function TimerScreen({
             <div className="content-stretch flex gap-[8px] items-center relative shrink-0 w-full mt-auto">
               <button
                 disabled={isResting}
-                onClick={() => { if (!isResting) { setIsStopped(true); if (isOffline) setShowOfflineSave(true); else setShowEndPopup(true); } }}
+                onClick={() => { if (!isResting) { if (isOffline) { saveOfflineRecord(); } else { setIsStopped(true); setShowEndPopup(true); } } }}
                 className={`flex-[1_0_0] h-[56px] min-w-px relative rounded-[8px] ${isResting ? 'bg-[var(--color-bg-muted)] cursor-not-allowed' : 'bg-[var(--color-fg-text-disable)] cursor-pointer active:bg-[#404040] transition-colors'}`}
               >
                 <div className="flex flex-row items-center justify-center size-full">
@@ -760,65 +776,6 @@ export default function TimerScreen({
             >
               <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-white text-center">확인</p>
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* 오프라인 임시저장 다이얼로그 — 오프라인 중 종료 시 (PDF: 임시 저장 다이얼로그) */}
-      {showOfflineSave && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black" style={{ opacity: 0.5 }} />
-          <style>{`
-            @keyframes offSavePop { from { transform: scale(0.75); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-          `}</style>
-          <div
-            className="relative bg-[var(--color-bg-weak)] rounded-[16px] p-[24px] w-[320px] flex flex-col gap-[16px] items-center"
-            style={{ animation: "offSavePop 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards" }}
-          >
-            <div className="flex flex-col gap-[32px] items-stretch w-full">
-              {/* 제목 + 설명 (Figma 7354:202183) */}
-              <div className="flex flex-col gap-[16px] items-center w-full">
-                <p className="font-['Pretendard:SemiBold',sans-serif] text-[18px] leading-[27px] text-white text-center w-full">
-                  기록을 저장 할까요?
-                </p>
-                <p className="font-['Pretendard:Regular',sans-serif] text-[16px] leading-[24px] text-white text-center w-full">
-                  네트워크 연결이 없어 측정 기록을<br />
-                  임시 저장하면 온라인 복귀 시<br />
-                  자동 업로드됩니다.
-                </p>
-              </div>
-              {/* 버튼: 취소(아웃라인) / 임시 저장(브랜드) */}
-              <div className="flex gap-[8px] items-stretch h-[44px] w-full">
-                <button
-                  type="button"
-                  onClick={() => { setShowOfflineSave(false); setIsStopped(false); }}
-                  className="flex-1 rounded-[8px] border border-[var(--color-border-subtle)] bg-transparent text-[var(--color-fg-text-weak)] text-[14px] leading-[21px] font-['Pretendard:Medium',sans-serif] active:scale-[0.98] transition-transform"
-                >
-                  취소
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    // 임시 저장 — 측정 기록을 동기화 대기 타이머로 추가하고 홈으로
-                    addPendingTimer(selectedTaskName, formatTime(mainTimer));
-                    setShowOfflineSave(false);
-                    setIsStopped(false);
-                    const sessionSecs = mainTimer;
-                    setMainTimer(0);
-                    setSubjectTimer(0);
-                    setRestTimer(0);
-                    setIsResting(false);
-                    setPomodoroCount(0);
-                    setPomodoroPhase('focus');
-                    setPomodoroSecsLeft(pomodoroFocusMinutes * 60);
-                    onGoHome?.(sessionSecs);
-                  }}
-                  className="flex-1 rounded-[8px] bg-[var(--color-bg-brand)] text-white text-[14px] leading-[21px] font-['Pretendard:Medium',sans-serif] active:bg-[var(--color-bg-brand-pressed)] transition-colors"
-                >
-                  임시 저장
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}

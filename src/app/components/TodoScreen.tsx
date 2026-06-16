@@ -26,7 +26,6 @@ import TodoEditSheet from "./TodoEditSheet";
 import BottomNav from "./BottomNav";
 import SharedCalendar from "./SharedCalendar";
 import TodoStatsScreen from "./TodoStatsScreen";
-import OfflineBanner from "./OfflineBanner";
 import { useOffline, SYNC_ANIM_MS } from "../contexts/OfflineContext";
 
 /** 동기화 대기 배지 — 오프라인 중 추가/변경된 항목에 표시 (Figma 7357:124409)
@@ -216,9 +215,11 @@ export default function TodoScreen({
   // 동일 이름 카테고리 추가 시 확인 팝업 — { name: 표시이름, existingKey: 기존 카테고리 키 }
   const [dupCategory, setDupCategory] = useState<{ name: string; existingKey: string } | null>(null);
   const [todos, setTodos] = useState<TodoItem[]>([]);
+  // 오프라인 중 추가/수정된 카테고리(키별) 동기화 대기 표시
+  const [categoryPending, setCategoryPending] = useState<Record<string, boolean>>({});
 
   // ── 오프라인 모드 (UI 전용) ──
-  // 오프라인 중 추가/완료토글한 항목은 pending(대기) 표시. 온라인 복귀 시 동기화 연출 후 정리.
+  // 오프라인 중 추가/수정/완료한 할일·카테고리는 pending(대기) 표시. 온라인 복귀 시 동기화 연출 후 정리.
   const { isOffline, addPending } = useOffline();
   const prevOfflineRef = useRef(isOffline);
   useEffect(() => {
@@ -226,6 +227,7 @@ export default function TodoScreen({
       // 온라인 복귀 — 동기화 완료 연출 시간 뒤 대기 배지 제거
       const id = window.setTimeout(() => {
         setTodos((prev) => prev.map((t) => (t.pending ? { ...t, pending: false } : t)));
+        setCategoryPending({});
       }, SYNC_ANIM_MS);
       prevOfflineRef.current = isOffline;
       return () => window.clearTimeout(id);
@@ -242,6 +244,7 @@ export default function TodoScreen({
       return;
     }
     setCategories((prev) => [...prev, name]);
+    if (isOffline) setCategoryPending((p) => ({ ...p, [name]: true }));
     // 생성일 = 오늘. (생성일 이전 날짜에는 표시되지 않음)
     setCategoryCreated((prev) => ({ ...prev, [name]: todayStr }));
     // 빈 투두(텍스트 없는 입력칸)는 모두 정리 — 새 카테고리만 추가하고 할일 인풋은 만들지 않는다.
@@ -256,6 +259,7 @@ export default function TodoScreen({
       delete next[existingKey];
       return next;
     });
+    if (isOffline) setCategoryPending((p) => ({ ...p, [existingKey]: true }));
     setDupCategory(null);
   };
 
@@ -265,6 +269,7 @@ export default function TodoScreen({
   const createDuplicateCategory = (name: string, existingKey: string) => {
     const newKey = `dup-${Date.now()}-${Math.floor(performance.now())}`;
     setCategories((prev) => [...prev, newKey]);
+    if (isOffline) setCategoryPending((p) => ({ ...p, [newKey]: true }));
     setCategoryName((prev) => ({ ...prev, [newKey]: name }));
     setCategoryCreated((prev) => ({ ...prev, [newKey]: todayStr }));
     setCategoryHide((prev) => ({
@@ -332,11 +337,14 @@ export default function TodoScreen({
     if (oldKey in categoryName) {
       if (categoryName[oldKey] === newName) return;
       setCategoryName((prev) => ({ ...prev, [oldKey]: newName }));
+      if (isOffline) setCategoryPending((p) => ({ ...p, [oldKey]: true }));
       return;
     }
     // 일반 카테고리: 키 자체(=표시 이름)를 변경.
     if (oldKey === newName) return;
     setCategories((prev) => prev.map((c) => (c === oldKey ? newName : c)));
+    // 키가 바뀌므로 대기 표시도 새 키로 이동
+    if (isOffline) setCategoryPending((p) => { const n = { ...p }; delete n[oldKey]; n[newName] = true; return n; });
     setCategoryHide((prev) => {
       if (!(oldKey in prev)) return prev;
       const next = { ...prev };
@@ -399,9 +407,9 @@ export default function TodoScreen({
     const todoDate = selectedDateStr ?? todayStr;
     pendingFocusId.current = id;
     setNewTodoId(id);
-    // 항목 추가는 오프라인에서도 "즉시 반영" — 대기 배지 없이 바로 노출 (PDF 기준).
-    // 동기화 대기 표시는 완료 토글에만 적용한다(목업: 오프라인 중 완료한 항목에만 대기 배지).
-    setTodos((prev) => [{ id, text: "", done: false, category, date: todoDate }, ...prev]);
+    // 오프라인 중 추가한 항목은 동기화 대기(pending)로 생성
+    setTodos((prev) => [{ id, text: "", done: false, category, date: todoDate, pending: isOffline }, ...prev]);
+    if (isOffline) addPending(1);
   };
 
   // 미루기: 해당 투두의 날짜를 오늘로 변경 + 날짜 필터 해제
@@ -470,7 +478,7 @@ export default function TodoScreen({
         data-todo-id={todo.id}
         onFocus={() => setInlineFocusId(todo.id)}
         onBlur={() => setInlineFocusId(null)}
-        onChange={(e) => updateTodo(todo.id, { text: e.target.value })}
+        onChange={(e) => updateTodo(todo.id, isOffline ? { text: e.target.value, pending: true } : { text: e.target.value })}
         onKeyDown={(e) => {
           if (e.nativeEvent.isComposing || e.keyCode === 229) return;
           if (e.key === "Enter") {
@@ -487,7 +495,7 @@ export default function TodoScreen({
         className="flex-1 min-w-0 bg-transparent outline-none border-none font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-weak)] placeholder:text-[var(--color-fg-text-muted)] cursor-text"
         data-name="todo-input"
       />
-      {todo.pending && <PendingBadge />}
+      {todo.pending && todo.text.trim() && <PendingBadge />}
       {todo.text.trim() && (
         <button
           type="button"
@@ -556,7 +564,6 @@ export default function TodoScreen({
 
   return (
     <div className="bg-[var(--color-bg-weak)] h-full w-full relative overflow-clip" data-name="할일">
-      <OfflineBanner />
       {/* Header block: rounded bottom corners, contains status / title / calendar */}
       <div
         className="absolute left-0 top-0 w-full bg-[var(--color-bg-weak)] flex flex-col items-start rounded-bl-[16px] rounded-br-[16px]"
@@ -664,26 +671,29 @@ export default function TodoScreen({
                   data-category={cat}
                 >
                   {/* 회색 "카테고리" 칩 헤더 (Chips_v2.0) — 탭하면 해당 카테고리에 할일 추가 */}
-                  <button
-                    type="button"
-                    onClick={() => addTodo(cat)}
-                    className="self-start h-[32px] px-[12px] py-[4px] rounded-[36px] bg-[var(--color-bg-muted)] inline-flex items-center justify-center gap-[2px] active:opacity-80 transition-opacity"
-                    aria-label={`${isAll ? "전체" : displayCat(cat)}에 할일 추가`}
-                    data-name="category-chip"
-                  >
-                    <span className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-inverse)] whitespace-nowrap">
-                      {isAll ? "전체" : displayCat(cat)}
-                    </span>
-                    <svg className="size-[16px] shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                      <path
-                        d="M8 3.5V12.5M3.5 8H12.5"
-                        stroke="var(--color-fg-text-inverse)"
-                        strokeWidth="1.4"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
+                  <div className="self-start flex items-center gap-[6px]">
+                    <button
+                      type="button"
+                      onClick={() => addTodo(cat)}
+                      className="h-[32px] px-[12px] py-[4px] rounded-[36px] bg-[var(--color-bg-muted)] inline-flex items-center justify-center gap-[2px] active:opacity-80 transition-opacity"
+                      aria-label={`${isAll ? "전체" : displayCat(cat)}에 할일 추가`}
+                      data-name="category-chip"
+                    >
+                      <span className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-inverse)] whitespace-nowrap">
+                        {isAll ? "전체" : displayCat(cat)}
+                      </span>
+                      <svg className="size-[16px] shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path
+                          d="M8 3.5V12.5M3.5 8H12.5"
+                          stroke="var(--color-fg-text-inverse)"
+                          strokeWidth="1.4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </button>
+                    {!isAll && categoryPending[cat] && <PendingBadge />}
+                  </div>
                   {pinnedHere && renderActiveRow(pinnedHere)}
                   {groupTodos.map(renderActiveRow)}
                   {!hideCompleted && groupDone.map(renderDoneRow)}
@@ -919,7 +929,7 @@ export default function TodoScreen({
           <TodoEditSheet
             initialText={todo.text}
             onSave={(text) => {
-              updateTodo(editingTodoId, { text });
+              updateTodo(editingTodoId, isOffline ? { text, pending: true } : { text });
               setEditingTodoId(null);
             }}
             onDelete={() => {

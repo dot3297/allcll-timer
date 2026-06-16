@@ -20,6 +20,13 @@
   font-display: swap;
   src: url('https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/woff2/Pretendard-SemiBold.woff2') format('woff2');
 }
+@font-face {
+  font-family: 'Pretendard:Bold';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/woff2/Pretendard-Bold.woff2') format('woff2');
+}
 
 /* Spoqa Han Sans Neo — https://spoqa.github.io/spoqa-han-sans/ */
 @font-face {

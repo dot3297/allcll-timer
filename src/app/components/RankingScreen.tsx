@@ -492,21 +492,6 @@ export default function RankingScreen({
       {/* ── Divider ── */}
       <div className="bg-[var(--color-fg-text-disable)] h-px w-full shrink-0" />
 
-      {/* ── 오프라인 안내 — 실시간 랭킹 갱신 불가 (PDF) ── */}
-      {isOffline && (
-        <div className="shrink-0 flex items-center justify-center gap-[6px] px-[16px] py-[8px] bg-[rgba(255,107,107,0.10)]">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M2 5.5C5.5 2.8 10.5 2.8 14 5.5" stroke="#ff6b6b" strokeWidth="1.4" strokeLinecap="round" />
-            <path d="M4.3 8.2C6.5 6.5 9.5 6.5 11.7 8.2" stroke="#ff6b6b" strokeWidth="1.4" strokeLinecap="round" />
-            <circle cx="8" cy="11.5" r="1.1" fill="#ff6b6b" />
-            <path d="M2 14L14 2" stroke="#ff6b6b" strokeWidth="1.4" strokeLinecap="round" />
-          </svg>
-          <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-[var(--color-fg-text-muted)]">
-            오프라인 · 실시간 랭킹이 갱신되지 않아요
-          </p>
-        </div>
-      )}
-
       {/* ── 상단 고정 섹션 (스크롤 안 됨) ── */}
       <div className="shrink-0 relative flex flex-col items-center py-[24px] gap-[8px]">
 

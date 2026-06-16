@@ -6,6 +6,7 @@ import TodoScreen from "./components/TodoScreen";
 import YesterdayScreen from "./components/YesterdayScreen";
 import RankingScreen from "./components/RankingScreen";
 import PomodoroBottomSheet, { type PomodoroSettings } from "./components/PomodoroBottomSheet";
+import TimeEditScreen from "./components/TimeEditScreen";
 import { OfflineProvider, useOffline } from "./contexts/OfflineContext";
 
 /** 개발용 온/오프라인 토글 — 오프라인 모드 UI 시연용 (실제 네트워크 감지 아님).
@@ -15,7 +16,7 @@ function OfflineDevToggle() {
   return (
     <button
       onClick={() => setOffline(!isOffline)}
-      className={`fixed top-[56px] left-[400px] z-[100] px-3 py-2 rounded-full text-xs font-medium shadow-lg transition-colors ${
+      className={`fixed top-[8px] left-[140px] z-[100] px-3 py-2 rounded-full text-xs font-medium shadow-lg transition-colors ${
         isOffline ? "bg-[#f37555] text-white" : "bg-[#333] text-white"
       }`}
       data-name="dev-offline-toggle"
@@ -200,6 +201,7 @@ function TimeLabels() {
 export default function App() {
   const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showTimeEdit, setShowTimeEdit] = useState(false);
   const [showCharacterSelection, setShowCharacterSelection] = useState(false);
   const [showTimerScreen, setShowTimerScreen] = useState(false);
   const [showTodoScreen, setShowTodoScreen] = useState(false);
@@ -320,6 +322,12 @@ export default function App() {
           >
             ← 타이머홈으로
           </button>
+        </div>
+      )}
+
+      {showTimeEdit && (
+        <div className="fixed inset-0 z-[70] bg-white">
+          <TimeEditScreen onBack={() => setShowTimeEdit(false)} />
         </div>
       )}
 
@@ -616,10 +624,10 @@ export default function App() {
                 <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-[#333]">사진 내보내기</p>
               </button>
 
-              {/* 타이머 편집 */}
+              {/* 시간 수정 */}
               <button
                 className="flex items-center gap-[12px] px-[16px] py-[12px] w-full bg-white active:bg-[#efeff0] transition-colors duration-150 text-left"
-                onClick={() => console.log('타이머 편집')}
+                onClick={() => { setIsMenuOpen(false); setShowTimeEdit(true); }}
               >
                 <div className="relative shrink-0 size-[24px]">
                   <div className="absolute inset-[10.42%]">
@@ -636,13 +644,13 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-                <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-[#333]">타이머 편집</p>
+                <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-[#333]">시간 수정</p>
               </button>
 
-              {/* 타이머 추가 */}
+              {/* 타이머 추가/편집 */}
               <button
                 className="flex items-center gap-[12px] px-[16px] py-[12px] w-full bg-white active:bg-[#efeff0] transition-colors duration-150 text-left"
-                onClick={() => console.log('타이머 추가')}
+                onClick={() => console.log('타이머 추가/편집')}
               >
                 <div className="relative shrink-0 size-[24px]">
                   <div className="absolute inset-[9.17%_14.58%_8.33%_14.58%]">
@@ -651,7 +659,7 @@ export default function App() {
                     </svg>
                   </div>
                 </div>
-                <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-[#333]">타이머 추가</p>
+                <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-[#333]">타이머 추가/편집</p>
               </button>
             </div>
 

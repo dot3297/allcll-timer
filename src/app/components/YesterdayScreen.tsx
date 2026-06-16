@@ -15,7 +15,6 @@
  * - [ ] 서버 API 연동 (현재 더미 데이터 사용)
  */
 import { useState, useEffect, useRef } from "react";
-import { useOffline } from "../contexts/OfflineContext";
 import BottomNav from "./BottomNav";
 
 // ── 툴팁 (rounded rect + 아래 삼각) ─────────────────────────────────
@@ -140,8 +139,6 @@ export default function YesterdayScreen({
   onNavigateToTodo?: () => void;
   onNavigateToRanking?: () => void;
 }) {
-  // 오프라인 시 통계는 마지막으로 저장된 캐시 데이터 (PDF: 통계 캐시 — 어제/주간/월간)
-  const { isOffline } = useOffline();
   const [barsAnimated, setBarsAnimated] = useState(false);
   const [pillsVisible, setPillsVisible] = useState(false);
   const [headerHidden, setHeaderHidden] = useState(false);
@@ -209,21 +206,6 @@ export default function YesterdayScreen({
         style={{ paddingBottom: 100 }}
       >
         <div className="flex flex-col gap-[12px] w-full">
-
-          {/* ── 오프라인 캐시 안내 — 통계는 마지막 저장 데이터 (PDF) ── */}
-          {isOffline && (
-            <div className="flex items-center gap-[6px] px-[14px] py-[10px] rounded-[10px] bg-[rgba(255,107,107,0.10)]">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M2 5.5C5.5 2.8 10.5 2.8 14 5.5" stroke="#ff6b6b" strokeWidth="1.4" strokeLinecap="round" />
-                <path d="M4.3 8.2C6.5 6.5 9.5 6.5 11.7 8.2" stroke="#ff6b6b" strokeWidth="1.4" strokeLinecap="round" />
-                <circle cx="8" cy="11.5" r="1.1" fill="#ff6b6b" />
-                <path d="M2 14L14 2" stroke="#ff6b6b" strokeWidth="1.4" strokeLinecap="round" />
-              </svg>
-              <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-[var(--color-fg-text-muted)]">
-                오프라인 · 마지막으로 저장된 캐시 데이터예요
-              </p>
-            </div>
-          )}
 
           {/* ── 카드 1: 지난주 오늘 비교 ─────────────────────────── */}
           <div
