@@ -819,6 +819,7 @@ export default function TimerScreen({
       {/* 설정 바텀시트 */}
       {showSettingsSheet && (
         <TimerSettingsSheet
+          isPomodoroMode={isPomodoroMode}
           onClose={() => setShowSettingsSheet(false)}
           onCharacterChange={() => {
             setShowSettingsSheet(false);

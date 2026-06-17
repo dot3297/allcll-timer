@@ -6,11 +6,15 @@
  * 타이머 관련 세부 설정을 조정할 수 있다.
  *
  * ## 주요 기능
- * - 허용 앱 ON/OFF 토글 설정
- * - 뽀모도로 모드 ON/OFF 토글 (ON 시 PomodoroBottomSheet 표시)
+ * - 화면 항상 켜짐 / 명언 ON/OFF 토글 설정
+ * - 뽀모 소리/진동 선택 (없음/소리만/진동만/둘다) — 뽀모도로 모드에서만 노출
  * - "캐릭터 변경" 버튼: CharacterChangeSheet 바텀시트 연결
+ * - 다른 앱 사용(허용 앱) 설정
  */
 import { useState } from "react";
+
+/** 뽀모 소리/진동 옵션 — 뽀모도로 모드에서만 표시 */
+const POMO_ALERT_OPTIONS = ["없음", "소리만", "진동만", "둘다"] as const;
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -28,12 +32,16 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
 export default function TimerSettingsSheet({
   onClose,
   onCharacterChange,
+  isPomodoroMode = false,
 }: {
   onClose: () => void;
   onCharacterChange: () => void;
+  /** 뽀모도로 모드 진입 여부 — true일 때만 "뽀모 소리/진동" 노출 */
+  isPomodoroMode?: boolean;
 }) {
   const [screenAlwaysOn, setScreenAlwaysOn] = useState(true);
   const [quotes, setQuotes] = useState(true);
+  const [pomoAlert, setPomoAlert] = useState("진동만");
 
   return (
     <div className="absolute inset-0 z-50">
@@ -78,6 +86,36 @@ export default function TimerSettingsSheet({
             </div>
             <div className="h-px bg-[#6d7278]" />
           </div>
+
+          {/* 뽀모 소리/진동 — 뽀모도로 모드에서만 노출 */}
+          {isPomodoroMode && (
+            <div className="px-[16px]">
+              <div className="flex flex-col gap-[8px] py-[16px]">
+                <p className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-[#f9f9fa]">
+                  뽀모 소리/진동
+                </p>
+                <div className="flex gap-[4px]">
+                  {POMO_ALERT_OPTIONS.map((opt) => {
+                    const sel = pomoAlert === opt;
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setPomoAlert(opt)}
+                        aria-pressed={sel}
+                        className={`flex-1 h-[48px] rounded-[8px] flex items-center justify-center font-['Pretendard:Regular',sans-serif] text-[14px] leading-[21px] transition-colors ${
+                          sel ? "bg-[#6d7278] text-white" : "bg-[#333] text-[#95999d]"
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="h-px bg-[#6d7278]" />
+            </div>
+          )}
 
           {/* 캐릭터 변경 */}
           <div className="px-[16px]">
