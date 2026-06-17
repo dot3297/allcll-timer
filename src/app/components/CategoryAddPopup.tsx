@@ -22,8 +22,9 @@ type Props = {
 /**
  * Category-add popup.
  *
- * Spec (Figma node 6324-228393 → Popup v.2.0):
- * - Card: 343 × 223, padding 24, radius 16 (radius/md = 12 used inline), bg color/bg/muted = #333
+ * Spec (Figma node 7290-113432 → Popup v.2.0):
+ * - Card: 343 wide, padding 24, radius 16, bg color/bg/weak = #262626
+ * - Text input: filled bg color/bg/muted = #333, border #b6b8b9 (focus → brand)
  * - Container: 295 × 175 with 32px vertical gap between (title • input • button-group)
  * - Title: Heading 5/Bold (Pretendard SemiBold 18/27), color/fg-text/solid = #fff
  * - Text input: 295 × 40, radius 8, border color/border/solid = #b6b8b9 (focus → brand)
@@ -55,7 +56,7 @@ export default function CategoryAddPopup({ onCancel, onConfirm, defaultValue = "
       data-name="category-popup-backdrop"
     >
       <div
-        className="bg-[#333] rounded-[16px] p-[24px] w-[343px] flex flex-col gap-[32px] items-stretch"
+        className="bg-[var(--color-bg-weak)] rounded-[16px] p-[24px] w-[343px] flex flex-col gap-[32px] items-stretch"
         onClick={(e) => e.stopPropagation()}
         data-name="category-popup"
       >
@@ -76,7 +77,7 @@ export default function CategoryAddPopup({ onCancel, onConfirm, defaultValue = "
               if (e.key === "Enter") handleConfirm();
               if (e.key === "Escape") onCancel();
             }}
-            className="peer w-full h-full rounded-[8px] border border-[#b6b8b9] focus:border-[#9678ff] bg-transparent text-[#f9f9fa] text-[14px] font-['Pretendard:Regular',sans-serif] leading-[21px] pl-[12px] pr-[36px] outline-none placeholder:text-[#95999d] transition-colors"
+            className="peer w-full h-full rounded-[8px] border border-[#b6b8b9] focus:border-[#9678ff] bg-[var(--color-bg-muted)] text-[#f9f9fa] text-[14px] font-['Pretendard:Regular',sans-serif] leading-[21px] pl-[12px] pr-[36px] outline-none placeholder:text-[#95999d] transition-colors"
             data-name="category-input"
           />
           {value && (

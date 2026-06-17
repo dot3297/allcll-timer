@@ -13,8 +13,15 @@
  * conflict=true 로 진입(충돌 팝업 "타임라인 보기")하면, 상단에 "기존 기록 vs 새로 측정한 기록"
  * 선택 패널과 하단 저장 버튼이 추가된다. (기존 CategoryHideSheet 라디오 패턴 차용)
  */
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { useOffline } from "../contexts/OfflineContext";
+
+// 충돌 카드 옵션 (Figma 7437-268787) — 같은 시간대 겹친 두 기록
+// 다른 디바이스(기존 기록) = 회색 배지 / 현재 디바이스(새 기록) = 코랄 배지
+const CONFLICT_OPTS = [
+  { key: "other",   name: "수학", color: "#ff8080", device: "다른 디바이스", deviceBg: "#f7f7f8", deviceText: "#868b90", duration: "2시간 40분", range: "13:00 - 16:10" },
+  { key: "current", name: "국어", color: "#f8d884", device: "현재 디바이스", deviceBg: "#fef1ec", deviceText: "#ff7a68", duration: "2시간 40분", range: "13:00 - 16:10" },
+] as const;
 
 type TimelineRow =
   | { type: "label"; time: string; color: string; name: string; duration: string; dim?: boolean }
@@ -69,10 +76,9 @@ export default function TimeEditScreen({
   // 헤더 날짜 (Figma 텍스트)
   const dateTitle = "12월 13일(수)";
 
-  // 충돌 해소 — 기존 기록 vs 새로 측정한(대기) 기록 중 선택
-  const { pendingTimers, resolvePendingTimers } = useOffline();
-  const newRec = pendingTimers.find((t) => !t.synced) ?? { name: "한국사", time: "00:00:01" };
-  const [picked, setPicked] = useState<"existing" | "new" | null>(null);
+  // 충돌 해소 — 같은 시간대 겹친 두 기록 중 남길 것 선택
+  const { resolvePendingTimers } = useOffline();
+  const [picked, setPicked] = useState<string | null>(null);
 
   return (
     <div className="bg-white h-full w-full flex flex-col relative overflow-hidden" data-name="타이머_시간 수정">
@@ -122,66 +128,12 @@ export default function TimeEditScreen({
         <Stepper dir="right" />
       </div>
 
-      {/* ── 충돌 선택 패널 (기존 기록 vs 새 기록) ── */}
-      {conflict && (
-        <div className="shrink-0 px-[16px] pb-[12px] flex flex-col gap-[8px]">
-          <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[#6d7278]">
-            같은 시간대에 기록이 겹쳐요. 저장할 기록을 선택하세요.
-          </p>
-          {([
-            { key: "existing", name: "수학", duration: "2시간 49분", desc: "기존 기록 (다른 기기)", pending: false },
-            { key: "new", name: newRec.name, duration: newRec.time, desc: "방금 측정한 기록", pending: true },
-          ] as const).map((opt) => {
-            const sel = picked === opt.key;
-            return (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => setPicked(opt.key)}
-                aria-pressed={sel}
-                className={`flex items-center gap-[12px] px-[16px] py-[12px] rounded-[12px] w-full text-left transition-colors ${
-                  sel ? "bg-[rgba(150,120,255,0.1)] border border-[#9678ff]" : "border border-[#efeff0] bg-white"
-                }`}
-              >
-                <div className="size-[28px] shrink-0 rounded-full bg-[#f2f2fa]" aria-hidden="true" />
-                <div className="flex-1 min-w-0 flex flex-col">
-                  <div className="flex items-center gap-[6px]">
-                    <span className="font-['Spoqa_Han_Sans_Neo:Medium',sans-serif] text-[14px] leading-[21px] text-[#333] whitespace-nowrap">
-                      {opt.name}
-                    </span>
-                    <span className="font-['Spoqa_Han_Sans_Neo:Regular',sans-serif] text-[12px] leading-[18px] text-[#b6b8b9]">
-                      {opt.duration}
-                    </span>
-                    {opt.pending && (
-                      <span className="shrink-0 px-[8px] py-[2px] rounded-[4px] bg-[#fef1ec] text-[#ff7a68] text-[12px] leading-[18px] font-['Pretendard:Medium',sans-serif]">
-                        대기
-                      </span>
-                    )}
-                  </div>
-                  <span className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-[#6d7278]">
-                    {opt.desc}
-                  </span>
-                </div>
-                {sel ? (
-                  <div className="size-[24px] shrink-0 rounded-full bg-[#9678ff] flex items-center justify-center">
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                      <path d="M2.5 6.2L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-                ) : (
-                  <div className="size-[24px] shrink-0 rounded-full border-[1.5px] border-[#d8d8d8]" />
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {/* ── Record timeline (scroll) ── */}
       <div className="flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
         <div className="flex flex-col pb-[40px]">
           {ROWS.map((row, idx) => (
-            <div key={idx} className="flex gap-[14px] items-stretch px-[16px]">
+            <Fragment key={idx}>
+            <div className="flex gap-[14px] items-stretch px-[16px]">
               {/* 좌측 레일: 시간 라벨 + 컬러 바/커넥터 */}
               <div className="flex gap-[12px] shrink-0 items-stretch">
                 <span className="w-[32px] shrink-0 text-right font-['Spoqa_Han_Sans_Neo:Medium',sans-serif] text-[12px] leading-[1.5] text-[#b6b8b9] pt-[10px]">
@@ -231,25 +183,74 @@ export default function TimeEditScreen({
                 )}
               </div>
             </div>
+            {/* 충돌 카드 — 겹친 시간대에 인라인 삽입 (Figma 7437-268787) */}
+            {conflict && idx === 2 && (
+              <div className="mx-[16px] my-[8px] border border-[#ff7a68] rounded-[16px] overflow-hidden">
+                {/* 경고 배너 (코랄) */}
+                <div className="bg-[#fef1ec] px-[16px] py-[12px] flex items-center gap-[4px]">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <circle cx="10" cy="10" r="8.33" fill="#ff7a68" />
+                    <path d="M10 5.2V11" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
+                    <circle cx="10" cy="14.2" r="1" fill="white" />
+                  </svg>
+                  <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-[#ff7a68]">
+                    13:00 - 15:49 기록이 겹쳐요
+                  </p>
+                </div>
+                {/* 기록 선택 영역 (화이트) */}
+                <div className="bg-white p-[16px] flex flex-col gap-[16px]">
+                  <div className="flex flex-col gap-[8px]">
+                    {CONFLICT_OPTS.map((opt) => {
+                      const sel = picked === opt.key;
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setPicked(opt.key)}
+                          aria-pressed={sel}
+                          className={`flex items-center justify-between gap-[8px] px-[16px] py-[12px] rounded-[12px] w-full text-left bg-white transition-colors border ${sel ? "border-[#9678ff]" : "border-[#efeff0]"}`}
+                        >
+                          <div className="flex-1 min-w-0 flex flex-col gap-[4px]">
+                            <div className="flex items-center gap-[4px] w-full">
+                              <div className="w-[16px] h-[15px] shrink-0 rounded-[4px]" style={{ background: opt.color }} aria-hidden="true" />
+                              <span className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-[#6d7278] whitespace-nowrap">
+                                {opt.name}
+                              </span>
+                              <span
+                                className="shrink-0 px-[8px] py-[2px] rounded-[4px] text-[12px] leading-[18px] font-['Pretendard:Medium',sans-serif]"
+                                style={{ background: opt.deviceBg, color: opt.deviceText }}
+                              >
+                                {opt.device}
+                              </span>
+                            </div>
+                            <span className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-[#b6b8b9]">
+                              {opt.range}
+                            </span>
+                          </div>
+                          <span className="shrink-0 font-['Pretendard:SemiBold',sans-serif] text-[16px] leading-[24px] text-[#868b90] whitespace-nowrap">
+                            {opt.duration}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!picked}
+                    onClick={() => { resolvePendingTimers(); onResolve?.(); }}
+                    className={`w-full h-[44px] rounded-[8px] text-[14px] leading-[21px] font-['Pretendard:Medium',sans-serif] transition-colors ${
+                      picked ? "bg-[#9678ff] text-white active:bg-[#8461fa]" : "bg-[#f2f2fa] text-[#b6b8b9]"
+                    }`}
+                  >
+                    {picked ? `${CONFLICT_OPTS.find((o) => o.key === picked)?.name} 기록 남기기` : "남길 기록을 선택하세요"}
+                  </button>
+                </div>
+              </div>
+            )}
+            </Fragment>
           ))}
         </div>
       </div>
-
-      {/* ── 충돌 해소 저장 버튼 ── */}
-      {conflict && (
-        <div className="shrink-0 bg-white px-[16px] pt-[12px] pb-[8px] border-t border-[#f2f2fa]">
-          <button
-            type="button"
-            disabled={!picked}
-            onClick={() => { resolvePendingTimers(); onResolve?.(); }}
-            className={`w-full h-[52px] rounded-[8px] text-[16px] leading-[24px] font-['Pretendard:Medium',sans-serif] transition-colors ${
-              picked ? "bg-[#9678ff] text-white active:bg-[#8461fa]" : "bg-[#f2f2fa] text-[#b6b8b9]"
-            }`}
-          >
-            이 기록으로 저장
-          </button>
-        </div>
-      )}
 
       {/* ── Safe area ── */}
       <div className="h-[34px] shrink-0 bg-white" />

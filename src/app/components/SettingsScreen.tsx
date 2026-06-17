@@ -354,7 +354,7 @@ export default function SettingsScreen({
           <button
             type="button"
             onClick={() => requestDelete(Array.from(selected))}
-            className="flex-1 h-[56px] rounded-[12px] bg-[var(--color-bg-brand)] text-white text-[16px] leading-[24px] font-['Pretendard:Medium',sans-serif] active:bg-[var(--color-bg-brand-pressed)] transition-colors"
+            className="flex-1 h-[56px] rounded-[12px] bg-[var(--color-bg-error)] text-white text-[16px] leading-[24px] font-['Pretendard:Medium',sans-serif] active:bg-[var(--color-bg-error-pressed)] transition-colors"
           >
             삭제
           </button>

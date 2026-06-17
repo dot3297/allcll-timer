@@ -559,22 +559,14 @@ export default function TodoScreen({
         {todo.text || " "}
       </p>
       {todo.pending && <PendingBadge />}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-          setTodoMenu({ id: todo.id, x: window.innerWidth - rect.right, y: rect.bottom });
-        }}
-        className="shrink-0 size-[24px] flex items-center justify-center active:opacity-70 transition-opacity"
-        aria-label="더보기"
-      >
+      {/* 완료된 할일은 수정/삭제 불가 — "···"는 표시하되 눌러도 메뉴가 뜨지 않는다 */}
+      <div className="shrink-0 size-[24px] flex items-center justify-center" aria-hidden="true">
         <svg width="16" height="4" viewBox="0 0 16 4" fill="none">
           <circle cx="2" cy="2" r="1.5" fill="var(--color-fg-text-disable)" />
           <circle cx="8" cy="2" r="1.5" fill="var(--color-fg-text-disable)" />
           <circle cx="14" cy="2" r="1.5" fill="var(--color-fg-text-disable)" />
         </svg>
-      </button>
+      </div>
     </div>
   );
 
@@ -782,71 +774,65 @@ export default function TodoScreen({
         />
       </div>
 
-      {/* "···" 팝업 메뉴 — 수정 / 삭제 */}
-      {todoMenu && (
-        <>
-          {/* 백드롭 — 바깥 탭 시 닫힘 */}
-          <div
-            className="fixed inset-0 z-[60]"
-            onClick={() => setTodoMenu(null)}
-          />
-          {/* 메뉴 카드 — 버튼 바로 하단, left/top 기준 */}
-          <div
-            className="fixed z-[61] bg-[var(--color-bg-muted)] rounded-[12px] p-[4px] flex flex-col gap-[4px] min-w-[120px]"
-            style={{
-              right: todoMenu.x,
-              top: todoMenu.y + 4,
-              boxShadow: "0px 20px 50px -20px rgba(0,0,0,0.7)",
-            }}
-          >
-            {/* 수정 — 완료되지 않은 투두에만 표시 */}
-            {!todos.find((t) => t.id === todoMenu.id)?.done && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingTodoId(todoMenu.id);
-                  setTodoMenu(null);
-                }}
-                className="rounded-[8px] px-[12px] py-[8px] text-left w-full active:opacity-70 transition-opacity"
-              >
-                <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-white">
-                  수정
-                </p>
-              </button>
-            )}
-            {/* 미루기 — 오늘 날짜가 아닌 투두에만 표시 */}
-            {(() => {
-              const todo = todos.find((t) => t.id === todoMenu.id);
-              if (!todo || todo.date === todayStr) return null;
-              return (
+      {/* "···" 액션 바 — 수정 / (오늘로 미루기) / 삭제 (Figma 7447-266638) */}
+      {todoMenu && (() => {
+        const todo = todos.find((t) => t.id === todoMenu.id);
+        const showEdit = !todo?.done;
+        const showPostpone = !!todo && todo.date !== todayStr;
+        return (
+          <>
+            <style>{`@keyframes todoActionUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+            {/* 백드롭 — 바깥 탭 시 닫힘 */}
+            <div className="fixed inset-0 z-[60]" onClick={() => setTodoMenu(null)} />
+            {/* 하단 액션 바 */}
+            <div
+              className="fixed inset-x-0 bottom-0 z-[61] bg-[var(--color-bg-weak)] flex flex-col items-center"
+              style={{ animation: "todoActionUp 0.25s cubic-bezier(0.22,1,0.36,1)" }}
+            >
+              <div className="flex gap-[8px] items-stretch p-[16px] w-full">
+                {/* 수정 — 완료되지 않은 투두에만 */}
+                {showEdit && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingTodoId(todoMenu.id);
+                      setTodoMenu(null);
+                    }}
+                    className="flex-1 h-[56px] rounded-[8px] bg-[var(--color-bg-neutral-solid)] active:bg-[var(--color-bg-neutral-solid-pressed)] transition-colors flex items-center justify-center"
+                  >
+                    <p className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-white">수정</p>
+                  </button>
+                )}
+                {/* 오늘로 미루기 — 오늘 날짜가 아닌 투두에만 */}
+                {showPostpone && (
+                  <button
+                    type="button"
+                    onClick={() => postponeTodo(todoMenu.id)}
+                    className="flex-1 h-[56px] rounded-[8px] bg-[var(--color-bg-neutral-solid)] active:bg-[var(--color-bg-neutral-solid-pressed)] transition-colors flex items-center justify-center"
+                  >
+                    <p className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-white">오늘로 미루기</p>
+                  </button>
+                )}
+                {/* 삭제 */}
                 <button
                   type="button"
-                  onClick={() => postponeTodo(todoMenu.id)}
-                  className="rounded-[8px] px-[12px] py-[8px] text-left w-full active:opacity-70 transition-opacity"
+                  onClick={() => {
+                    removeTodo(todoMenu.id);
+                    setTodoMenu(null);
+                  }}
+                  className="flex-1 h-[56px] rounded-[8px] bg-[var(--color-bg-error)] active:bg-[var(--color-bg-error-pressed)] transition-colors flex items-center justify-center"
                 >
-                  <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-[var(--color-fg-text-brand)]">
-                    오늘로 미루기
-                  </p>
+                  <p className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-white">삭제</p>
                 </button>
-              );
-            })()}
-            <button
-              type="button"
-              onClick={() => {
-                removeTodo(todoMenu.id);
-                setTodoMenu(null);
-              }}
-              className="rounded-[8px] px-[12px] py-[8px] text-left w-full active:opacity-70 transition-opacity"
-            >
-              <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-[#ff7a68]">
-                삭제
-              </p>
-            </button>
-          </div>
-        </>
-      )}
+              </div>
+              {/* 하단 안전영역 */}
+              <div className="h-[34px] w-full shrink-0" />
+            </div>
+          </>
+        );
+      })()}
 
-      {/* ── 상태 선택 메뉴 (미완료 / 세모 / 완료) — 체크박스 탭 시 ── */}
+      {/* ── 상태 선택 바텀시트 (미완료 / 부분 완료 / 완료) — 체크박스 탭 시 (Figma 7446-114767) ── */}
       {statusMenu && (() => {
         const todo = todos.find((t) => t.id === statusMenu.id);
         if (!todo) return null;
@@ -855,14 +841,14 @@ export default function TodoScreen({
           {
             key: "none" as const,
             label: "미완료",
-            icon: <div className="size-[18px] rounded-[4px] border border-[var(--color-fg-text-disable)]" />,
+            icon: <div className="size-[24px] rounded-[5px] border-[1.92px] border-[var(--color-border-subtle)]" />,
           },
           {
             key: "partial" as const,
-            label: "중간 완료",
+            label: "부분 완료",
             icon: (
-              <div className="size-[18px] rounded-[4px] border border-[var(--color-bg-brand)] flex items-center justify-center">
-                <svg width="10" height="9" viewBox="0 0 10 9" fill="none" aria-hidden="true">
+              <div className="size-[24px] rounded-[5px] border-[1.92px] border-[var(--color-bg-brand)] flex items-center justify-center">
+                <svg width="14" height="12" viewBox="0 0 10 9" fill="none" aria-hidden="true">
                   <path d="M5 0.8L9.33 8.2H0.67L5 0.8Z" fill="var(--color-bg-brand)" />
                 </svg>
               </div>
@@ -872,8 +858,8 @@ export default function TodoScreen({
             key: "done" as const,
             label: "완료",
             icon: (
-              <div className="size-[18px] rounded-[4px] flex items-center justify-center bg-[var(--color-bg-brand)]">
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+              <div className="size-[24px] rounded-[5px] flex items-center justify-center bg-[var(--color-bg-brand)]">
+                <svg width="16" height="16" viewBox="0 0 10 10" fill="none" aria-hidden="true">
                   <path d="M1.5 5.2L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
@@ -882,70 +868,105 @@ export default function TodoScreen({
         ];
         return (
           <>
-            <div className="fixed inset-0 z-[60]" onClick={() => setStatusMenu(null)} />
+            <style>{`@keyframes statusSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+            {/* 딤 백드롭 */}
+            <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setStatusMenu(null)} />
+            {/* 바텀시트 */}
             <div
-              className="fixed z-[61] bg-[var(--color-bg-muted)] rounded-[12px] p-[6px] flex items-center gap-[4px]"
-              style={{ left: statusMenu.x, top: statusMenu.y + 6, boxShadow: "0px 4px 20px rgba(0,0,0,0.4)" }}
+              className="fixed inset-x-0 bottom-0 z-[61] bg-[var(--color-bg-weak)] rounded-t-[16px] flex flex-col items-center"
+              style={{ animation: "statusSheetUp 0.28s cubic-bezier(0.22,1,0.36,1)" }}
             >
-              {options.map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  aria-label={opt.label}
-                  onClick={() => setTodoStatus(todo, opt.key)}
-                  className={`size-[32px] rounded-[8px] flex items-center justify-center active:opacity-70 transition-colors ${
-                    cur === opt.key ? "bg-[var(--color-bg-neutral-solid-pressed)]" : ""
-                  }`}
-                >
-                  {opt.icon}
-                </button>
-              ))}
+              {/* 헤더 */}
+              <div className="relative w-full flex flex-col items-center justify-center px-[16px] py-[24px]">
+                <div className="absolute top-[10px] left-1/2 -translate-x-1/2 h-[5px] w-[40px] rounded-full bg-[var(--color-fg-text-disable)]" />
+                <p className="font-['Pretendard:SemiBold',sans-serif] text-[18px] leading-[27px] text-[var(--color-fg-text-weak)] text-center">
+                  할일을 완료 했나요?
+                </p>
+              </div>
+              {/* 옵션 3개 */}
+              <div className="flex gap-[8px] items-center justify-center py-[16px] w-full">
+                {options.map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    aria-label={opt.label}
+                    aria-pressed={cur === opt.key}
+                    onClick={() => setTodoStatus(todo, opt.key)}
+                    className={`bg-[var(--color-bg-muted)] rounded-[12px] px-[24px] py-[16px] flex flex-col gap-[8px] items-center justify-center active:opacity-70 transition-opacity ${
+                      cur === opt.key ? "ring-2 ring-[var(--color-bg-brand)]" : ""
+                    }`}
+                  >
+                    <div className="size-[32px] flex items-center justify-center">{opt.icon}</div>
+                    <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-weak)] text-center min-w-[52px]">
+                      {opt.label}
+                    </p>
+                  </button>
+                ))}
+              </div>
+              {/* 하단 안전영역 */}
+              <div className="h-[34px] w-full shrink-0" />
             </div>
           </>
         );
       })()}
 
-      {/* "편집" 버튼 팝업 메뉴 — 새 카테고리 추가 / 편집 */}
+      {/* 카테고리 관리 바텀시트 — 새 카테고리 추가 / 카테고리 편집 (Figma 7445-269063) */}
       {editMenu && (
         <>
-          {/* 백드롭 */}
+          <style>{`@keyframes catSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+          {/* 딤 백드롭 */}
+          <div className="fixed inset-0 z-[60] bg-black/50" onClick={() => setEditMenu(null)} />
+          {/* 바텀시트 */}
           <div
-            className="fixed inset-0 z-[60]"
-            onClick={() => setEditMenu(null)}
-          />
-          {/* 메뉴 카드 */}
-          <div
-            className="fixed z-[61] bg-[var(--color-bg-muted)] rounded-[12px] p-[4px] flex flex-col gap-[4px] min-w-[160px]"
-            style={{
-              right: editMenu.right,
-              top: editMenu.top,
-              boxShadow: "0px 20px 50px -20px rgba(0,0,0,0.7)",
-            }}
+            className="fixed inset-x-0 bottom-0 z-[61] bg-[var(--color-bg-weak)] rounded-t-[16px] flex flex-col items-center"
+            style={{ animation: "catSheetUp 0.28s cubic-bezier(0.22,1,0.36,1)" }}
           >
-            <button
-              type="button"
-              onClick={() => {
-                setEditMenu(null);
-                setShowCategoryPopup(true);
-              }}
-              className="rounded-[8px] px-[12px] py-[8px] text-left w-full active:opacity-70 transition-opacity"
-            >
-              <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-white">
-                새 카테고리 추가
-              </p>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditMenu(null);
-                setShowSettings(true);
-              }}
-              className="rounded-[8px] px-[12px] py-[8px] text-left w-full active:opacity-70 transition-opacity"
-            >
-              <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[1.5] text-white">
-                편집
-              </p>
-            </button>
+            {/* 핸들 */}
+            <div className="w-full flex justify-center py-[9px]">
+              <div className="h-[5px] w-[40px] rounded-full bg-[var(--color-fg-text-disable)]" />
+            </div>
+            {/* 옵션 카드 */}
+            <div className="w-full px-[16px]">
+              <div className="bg-[var(--color-bg-muted)] rounded-[12px] flex flex-col w-full overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditMenu(null);
+                    setShowCategoryPopup(true);
+                  }}
+                  className="px-[10px] py-[14px] w-full active:opacity-70 transition-opacity"
+                >
+                  <p className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-[var(--color-fg-text-weak)] text-center">
+                    새 카테고리 추가
+                  </p>
+                </button>
+                <div className="h-px w-full bg-[var(--color-border-subtle)]" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditMenu(null);
+                    setShowSettings(true);
+                  }}
+                  className="px-[10px] py-[14px] w-full active:opacity-70 transition-opacity"
+                >
+                  <p className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-[var(--color-fg-text-weak)] text-center">
+                    카테고리 편집
+                  </p>
+                </button>
+              </div>
+            </div>
+            {/* 닫기 버튼 */}
+            <div className="w-full p-[16px]">
+              <button
+                type="button"
+                onClick={() => setEditMenu(null)}
+                className="w-full h-[56px] rounded-[8px] bg-[var(--color-bg-brand)] active:bg-[var(--color-bg-brand-pressed)] transition-colors flex items-center justify-center"
+              >
+                <p className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-white">닫기</p>
+              </button>
+            </div>
+            {/* 하단 안전영역 */}
+            <div className="h-[34px] w-full shrink-0" />
           </div>
         </>
       )}
