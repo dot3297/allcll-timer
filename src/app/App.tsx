@@ -206,6 +206,8 @@ export default function App() {
   const [timeEditConflict, setTimeEditConflict] = useState(false);
   const [showConflict, setShowConflict] = useState(false);
   const [showCharacterSelection, setShowCharacterSelection] = useState(false);
+  // 선택한 캐릭터 id — 달리기 배경 분기에 사용 ('boy' | 'girl' | 'cat')
+  const [selectedCharacter, setSelectedCharacter] = useState("girl");
   const [showTimerScreen, setShowTimerScreen] = useState(false);
   const [showTodoScreen, setShowTodoScreen] = useState(false);
   const [showYesterdayScreen, setShowYesterdayScreen] = useState(false);
@@ -296,6 +298,7 @@ export default function App() {
       {showTimerScreen && (
         <div className="fixed inset-0 z-50 bg-[#262626]">
           <TimerScreen
+            character={selectedCharacter}
             onNavigateToTodo={() => setShowTodoScreen(true)}
             onNavigateToYesterday={() => setShowYesterdayScreen(true)}
             onNavigateToRanking={() => setShowRankingScreen(true)}
@@ -348,7 +351,8 @@ export default function App() {
       {showCharacterSelection && (
         <CharacterSelection
           onClose={() => setShowCharacterSelection(false)}
-          onStart={() => {
+          onStart={(characterId) => {
+            setSelectedCharacter(characterId);
             setShowCharacterSelection(false);
             setShowTimerScreen(true);
           }}

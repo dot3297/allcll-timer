@@ -18,7 +18,26 @@ import { useState, useEffect } from "react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import confettiLottie from "../../imports/타이머종료/Confetti.lottie";
 import videoBg from "../../imports/타이머일반모드쉴래요클릭시/timer_bg.mp4";
+import videoBoyRun from "../../imports/타이머일반모드쉴래요클릭시/timer_boy_run.mp4";
+import videoGirlRun from "../../imports/타이머일반모드쉴래요클릭시/timer_girl_run.mp4";
+import videoCatRun from "../../imports/타이머일반모드쉴래요클릭시/timer_cat_run.mp4";
+
+// 캐릭터별 달리기 배경 영상 — 미지정/미일치 시 기본 영상 사용
+const RUN_VIDEO_BY_CHARACTER: Record<string, string> = {
+  boy: videoBoyRun,
+  girl: videoGirlRun,
+  cat: videoCatRun,
+};
+
+// 캐릭터별 쉴래요(휴식) 배경 이미지 — 미지정/미일치 시 기본 이미지 사용
+const REST_IMG_BY_CHARACTER: Record<string, string> = {
+  boy: imgRestBoy,
+  girl: imgRestBg,
+  cat: imgRestCat,
+};
 import imgRestBg from "../../imports/타이머일반모드쉴래요클릭시/timer_girl.png";
+import imgRestBoy from "../../imports/타이머일반모드쉴래요클릭시/timer_boy.png";
+import imgRestCat from "../../imports/타이머일반모드쉴래요클릭시/timer_cat.png";
 import imgClockBgCircle from "../../imports/타이머일반모드쉴래요클릭시/timer_clock_bg_circle.svg";
 import videoEndBg from "../../imports/타이머종료/timer_end_bg.mp4";
 import Bubble from "../../imports/Bubble/Bubble";
@@ -99,6 +118,7 @@ function ChatBubble({ isResting }: { isResting: boolean }) {
 }
 
 export default function TimerScreen({
+  character = "girl",
   onNavigateToTodo,
   onNavigateToYesterday,
   onNavigateToRanking,
@@ -107,6 +127,8 @@ export default function TimerScreen({
   pomodoroFocusMinutes = 25,
   pomodoroBreakMinutes = 5,
 }: {
+  /** 선택한 캐릭터 id — 달리기 배경 분기 ('boy' | 'girl' | 'cat') */
+  character?: string;
   onNavigateToTodo?: () => void;
   onNavigateToYesterday?: () => void;
   onNavigateToRanking?: () => void;
@@ -115,6 +137,10 @@ export default function TimerScreen({
   pomodoroFocusMinutes?: number;
   pomodoroBreakMinutes?: number;
 }) {
+  // 달리기 배경 — 선택한 캐릭터 전용 영상, 미일치 시 기본 영상
+  const runVideo = RUN_VIDEO_BY_CHARACTER[character] ?? videoBg;
+  // 쉴래요 배경 — 선택한 캐릭터 전용 이미지, 미일치 시 기본 이미지
+  const restImg = REST_IMG_BY_CHARACTER[character] ?? imgRestBg;
   const [timerMode, setTimerMode] = useState<'running' | 'clock'>('running');
   const [showPopup, setShowPopup] = useState(false);
   const [showCashHistory, setShowCashHistory] = useState(false);
@@ -259,7 +285,8 @@ export default function TimerScreen({
       <div className="absolute inset-0 overflow-hidden">
         {/* 런닝 모드 비디오 — 시계/종료/쉴래요 상태면 숨김 */}
         <video
-          src={videoBg}
+          key={runVideo}
+          src={runVideo}
           className={`absolute h-[82.1%] left-0 max-w-none top-[-13.1%] w-full object-cover transition-opacity duration-500 ${(isResting || isStopped || timerMode === 'clock') ? 'opacity-0' : 'opacity-100'}`}
           autoPlay
           loop
@@ -269,7 +296,7 @@ export default function TimerScreen({
         {/* 쉴래요 모드 이미지 */}
         <img
           alt=""
-          src={imgRestBg}
+          src={restImg}
           className={`absolute h-[82.1%] left-0 max-w-none top-[-13.1%] w-full object-cover transition-opacity duration-500 ${isResting && timerMode === 'running' ? 'opacity-100' : 'opacity-0'}`}
         />
         {/* 종료 모드 비디오 */}

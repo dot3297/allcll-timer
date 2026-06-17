@@ -136,7 +136,8 @@ const svgPaths = {
 
 type CharacterSelectionProps = {
   onClose: () => void;
-  onStart: () => void;
+  /** 선택한 캐릭터 id('boy' | 'girl' | 'cat')를 전달 */
+  onStart: (characterId: string) => void;
 };
 
 // 캐릭터 목록: 남자(0) · 여자(1) · 고양이(2)
@@ -289,7 +290,7 @@ export default function CharacterSelection({ onClose, onStart }: CharacterSelect
           <div className="flex flex-col items-center w-full" data-name="footer">
             <div className="w-full px-[16px] pb-[4px]" data-name="button-area">
               <button
-                onClick={onStart}
+                onClick={() => onStart(characters[selectedIndex].id)}
                 className="bg-[#9678ff] h-[56px] relative rounded-[8px] w-full active:bg-[#654ec1] transition-colors"
                 data-name="Button/Action Button"
               >
