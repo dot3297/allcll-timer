@@ -31,6 +31,8 @@ type OfflineCtx = {
   addPending: (n?: number) => void;
   /** 타이머 임시 저장 — 대기 기록으로 추가 (pendingCount도 +1) */
   addPendingTimer: (name: string, time: string) => void;
+  /** 충돌 해소 — 대기 타이머를 동기화 완료 처리(배지 제거) */
+  resolvePendingTimers: () => void;
 };
 
 const Ctx = createContext<OfflineCtx | null>(null);
@@ -73,8 +75,13 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     setPendingCount((c) => c + 1);
   }, []);
 
+  const resolvePendingTimers = useCallback(() => {
+    setPendingTimers((prev) => prev.map((t) => (t.synced ? t : { ...t, synced: true })));
+    setPendingCount(0);
+  }, []);
+
   return (
-    <Ctx.Provider value={{ isOffline, pendingCount, justSynced, pendingTimers, setOffline, addPending, addPendingTimer }}>
+    <Ctx.Provider value={{ isOffline, pendingCount, justSynced, pendingTimers, setOffline, addPending, addPendingTimer, resolvePendingTimers }}>
       {children}
     </Ctx.Provider>
   );

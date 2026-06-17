@@ -137,7 +137,7 @@ export default function TodoScreen({
   // Each todo remembers the category it was created under so we can filter the list
   // by the currently-active chip. "전체" is a virtual filter that shows everything,
   // so todos created while on "전체" carry "전체" as their category.
-  type TodoItem = { id: string; text: string; done: boolean; category: string; date: string; pending?: boolean };
+  type TodoItem = { id: string; text: string; done: boolean; category: string; date: string; pending?: boolean; partial?: boolean };
   // 카테고리 숨김 규칙 (날짜 범위)
   type HideRule = { kind: "all" } | { kind: "from"; date: string } | { kind: "until"; date: string };
   // 특정 날짜에 카테고리가 숨겨지는지 판정
@@ -202,6 +202,8 @@ export default function TodoScreen({
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   // "···" 버튼 팝업 메뉴 — id + 버튼의 화면 좌표(left, top) 기억
   const [todoMenu, setTodoMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  // 상태 선택 메뉴(미완료/세모/완료) — 체크박스 탭 시 표시
+  const [statusMenu, setStatusMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   // "편집" 버튼 팝업 메뉴 — 버튼 하단 right-aligned 위치 기억
   const [editMenu, setEditMenu] = useState<{ right: number; top: number } | null>(null);
   // Tracks which input is currently focused for inline editing.
@@ -388,14 +390,15 @@ export default function TodoScreen({
   const updateTodo = (id: string, patch: Partial<TodoItem>) =>
     setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
 
-  // 완료 토글 — 오프라인 중이면 동기화 대기(pending)로 표시
-  const toggleTodoDone = (todo: TodoItem) => {
+  // 상태 직접 설정 — 체크박스 탭 시 뜨는 메뉴에서 미완료/세모/완료를 선택. 오프라인 중이면 대기 표시.
+  const setTodoStatus = (todo: TodoItem, status: "none" | "partial" | "done") => {
+    const patch: Partial<TodoItem> = { partial: status === "partial", done: status === "done" };
     if (isOffline) {
       if (!todo.pending) addPending(1);
-      updateTodo(todo.id, { done: !todo.done, pending: true });
-    } else {
-      updateTodo(todo.id, { done: !todo.done });
+      patch.pending = true;
     }
+    updateTodo(todo.id, patch);
+    setStatusMenu(null);
   };
 
   const removeTodo = (id: string) =>
@@ -460,16 +463,26 @@ export default function TodoScreen({
     >
       <button
         type="button"
-        onClick={() => {
+        onClick={(e) => {
           if (!todo.text.trim()) return;
-          toggleTodoDone(todo);
+          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          setStatusMenu({ id: todo.id, x: rect.left, y: rect.bottom });
         }}
         disabled={!todo.text.trim()}
-        aria-label="완료"
+        aria-label="상태 선택"
         aria-disabled={!todo.text.trim()}
         className="size-[24px] flex items-center justify-center shrink-0"
       >
-        <div className="size-[18px] rounded-[4px] border border-[var(--color-fg-text-disable)]" />
+        {todo.partial ? (
+          // 세모(중간 완료) — 브랜드 보더 박스 + 브랜드 삼각형
+          <div className="size-[18px] rounded-[4px] border border-[var(--color-bg-brand)] flex items-center justify-center">
+            <svg width="10" height="9" viewBox="0 0 10 9" fill="none" aria-hidden="true">
+              <path d="M5 0.8L9.33 8.2H0.67L5 0.8Z" fill="var(--color-bg-brand)" />
+            </svg>
+          </div>
+        ) : (
+          <div className="size-[18px] rounded-[4px] border border-[var(--color-fg-text-disable)]" />
+        )}
       </button>
       <input
         type="text"
@@ -526,8 +539,11 @@ export default function TodoScreen({
     >
       <button
         type="button"
-        onClick={() => toggleTodoDone(todo)}
-        aria-label="완료 취소"
+        onClick={(e) => {
+          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          setStatusMenu({ id: todo.id, x: rect.left, y: rect.bottom });
+        }}
+        aria-label="상태 선택"
         className="size-[24px] flex items-center justify-center shrink-0"
       >
         <div className="size-[18px] rounded-[4px] flex items-center justify-center bg-[var(--color-bg-brand)]">
@@ -829,6 +845,65 @@ export default function TodoScreen({
           </div>
         </>
       )}
+
+      {/* ── 상태 선택 메뉴 (미완료 / 세모 / 완료) — 체크박스 탭 시 ── */}
+      {statusMenu && (() => {
+        const todo = todos.find((t) => t.id === statusMenu.id);
+        if (!todo) return null;
+        const cur = todo.done ? "done" : todo.partial ? "partial" : "none";
+        const options = [
+          {
+            key: "none" as const,
+            label: "미완료",
+            icon: <div className="size-[18px] rounded-[4px] border border-[var(--color-fg-text-disable)]" />,
+          },
+          {
+            key: "partial" as const,
+            label: "중간 완료",
+            icon: (
+              <div className="size-[18px] rounded-[4px] border border-[var(--color-bg-brand)] flex items-center justify-center">
+                <svg width="10" height="9" viewBox="0 0 10 9" fill="none" aria-hidden="true">
+                  <path d="M5 0.8L9.33 8.2H0.67L5 0.8Z" fill="var(--color-bg-brand)" />
+                </svg>
+              </div>
+            ),
+          },
+          {
+            key: "done" as const,
+            label: "완료",
+            icon: (
+              <div className="size-[18px] rounded-[4px] flex items-center justify-center bg-[var(--color-bg-brand)]">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                  <path d="M1.5 5.2L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+            ),
+          },
+        ];
+        return (
+          <>
+            <div className="fixed inset-0 z-[60]" onClick={() => setStatusMenu(null)} />
+            <div
+              className="fixed z-[61] bg-[var(--color-bg-muted)] rounded-[12px] p-[6px] flex items-center gap-[4px]"
+              style={{ left: statusMenu.x, top: statusMenu.y + 6, boxShadow: "0px 4px 20px rgba(0,0,0,0.4)" }}
+            >
+              {options.map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  aria-label={opt.label}
+                  onClick={() => setTodoStatus(todo, opt.key)}
+                  className={`size-[32px] rounded-[8px] flex items-center justify-center active:opacity-70 transition-colors ${
+                    cur === opt.key ? "bg-[var(--color-bg-neutral-solid-pressed)]" : ""
+                  }`}
+                >
+                  {opt.icon}
+                </button>
+              ))}
+            </div>
+          </>
+        );
+      })()}
 
       {/* "편집" 버튼 팝업 메뉴 — 새 카테고리 추가 / 편집 */}
       {editMenu && (

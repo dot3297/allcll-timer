@@ -6,48 +6,73 @@
  *
  * - 라이트 테마(흰 배경)
  * - 좌측: 시간 라벨 + 컬러 타임라인 바(학습=노랑 #f8d884 / 휴식=코랄 #ff8080)
- * - 우측: 기록 라벨(과목·시간) 또는 "쉬었니 뭐했니? 추가할래..?" 추가 박스
+ * - 우측: 기록 라벨(과목·시간) 또는 "추가하기" 추가 박스
  *
  * 현재는 UI 전용(더미 데이터). 실제 편집 로직은 추후 연동.
+ *
+ * conflict=true 로 진입(충돌 팝업 "타임라인 보기")하면, 상단에 "기존 기록 vs 새로 측정한 기록"
+ * 선택 패널과 하단 저장 버튼이 추가된다. (기존 CategoryHideSheet 라디오 패턴 차용)
  */
+import { useState } from "react";
+import { useOffline } from "../contexts/OfflineContext";
 
 type TimelineRow =
   | { type: "label"; time: string; color: string; name: string; duration: string; dim?: boolean }
   | { type: "box"; time: string; color?: string; text: string; add?: boolean };
 
 const ROWS: TimelineRow[] = [
-  { type: "box", time: "05:00", text: "쉬었어요." },
+  { type: "box", time: "07:50", text: "쉬었어요" },
   { type: "label", time: "07:50", color: "#f8d884", name: "수학", duration: "2시간 49분" },
-  { type: "box", time: "07:50", text: "쉬었니 뭐했니? 추가할래..?", add: true },
-  { type: "label", time: "07:50", color: "#ff8080", name: "죽어", duration: "2시간 49분" },
+  { type: "box", time: "07:50", text: "추가하기", add: true },
+  { type: "label", time: "07:50", color: "#ff8080", name: "국어", duration: "2시간 49분" },
   { type: "label", time: "07:50", color: "#ff8080", name: "잠깐 쉬었어요", duration: "2시간 49분", dim: true },
   { type: "label", time: "07:50", color: "#ff8080", name: "국어", duration: "2시간 49분" },
-  { type: "box", time: "07:50", text: "쉬었니 뭐했니? 추가할래..?", add: true },
+  { type: "box", time: "07:50", text: "추가하기", add: true },
   { type: "label", time: "07:50", color: "#ff8080", name: "국어", duration: "2시간 49분" },
-  { type: "box", time: "07:50", text: "쉬었니 뭐했니? 추가할래..?", add: true },
+  { type: "box", time: "07:50", text: "추가하기", add: true },
   { type: "label", time: "07:50", color: "#ff8080", name: "국어", duration: "2시간 49분" },
-  { type: "box", time: "07:50", text: "쉬었니 뭐했니? 추가할래..?", add: true },
+  { type: "box", time: "07:50", text: "추가하기", add: true },
 ];
 
-function Chevron({ dir }: { dir: "left" | "right" }) {
+/** 원형 회색 스테퍼 버튼 (Figma: Stepperleft/right) */
+function Stepper({ dir }: { dir: "left" | "right" }) {
   return (
-    <svg className="size-[24px]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d={dir === "left" ? "M14.5 7L9.5 12L14.5 17" : "M9.5 7L14.5 12L9.5 17"}
-        stroke="#b6b8b9"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <button
+      type="button"
+      aria-label={dir === "left" ? "시간 줄이기" : "시간 늘리기"}
+      className="shrink-0 size-[32px] rounded-full bg-[#f2f2fa] flex items-center justify-center active:scale-95 transition-transform"
+    >
+      <svg className="size-[18px]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d={dir === "left" ? "M14.5 7L9.5 12L14.5 17" : "M9.5 7L14.5 12L9.5 17"}
+          stroke="#b6b8b9"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
   );
 }
 
-export default function TimeEditScreen({ onBack }: { onBack?: () => void }) {
-  // 헤더 날짜 — 오늘 기준 (M월 D일(요일))
-  const d = new Date();
-  const dows = ["일", "월", "화", "수", "목", "금", "토"];
-  const dateTitle = `${d.getMonth() + 1}월 ${d.getDate()}일(${dows[d.getDay()]})`;
+export default function TimeEditScreen({
+  onBack,
+  conflict = false,
+  onResolve,
+}: {
+  onBack?: () => void;
+  /** 충돌(다른 기기 저장) 해소 모드 */
+  conflict?: boolean;
+  /** 충돌 해소 완료(저장) 시 */
+  onResolve?: () => void;
+}) {
+  // 헤더 날짜 (Figma 텍스트)
+  const dateTitle = "12월 13일(수)";
+
+  // 충돌 해소 — 기존 기록 vs 새로 측정한(대기) 기록 중 선택
+  const { pendingTimers, resolvePendingTimers } = useOffline();
+  const newRec = pendingTimers.find((t) => !t.synced) ?? { name: "한국사", time: "00:00:01" };
+  const [picked, setPicked] = useState<"existing" | "new" | null>(null);
 
   return (
     <div className="bg-white h-full w-full flex flex-col relative overflow-hidden" data-name="타이머_시간 수정">
@@ -86,20 +111,71 @@ export default function TimeEditScreen({ onBack }: { onBack?: () => void }) {
       </div>
 
       {/* ── Time stepper header ── */}
-      <div className="shrink-0 w-full flex items-center justify-center gap-[34px] pb-[16px] px-[8px]">
-        <button type="button" aria-label="시간 줄이기" className="size-[24px] flex items-center justify-center active:opacity-60 transition-opacity">
-          <Chevron dir="left" />
-        </button>
+      <div className="shrink-0 w-full flex items-center pb-[16px] px-[20px]">
+        <Stepper dir="left" />
         <p
-          className="font-['Pretendard:Bold',sans-serif] text-[40px] leading-none text-[#333] text-center tabular-nums whitespace-nowrap"
+          className="flex-1 font-['Pretendard:Bold',sans-serif] text-[40px] leading-none text-[#333] text-center tabular-nums whitespace-nowrap"
           style={{ fontFeatureSettings: "'lnum' 1, 'tnum' 1" }}
         >
           04:50:38
         </p>
-        <button type="button" aria-label="시간 늘리기" className="size-[24px] flex items-center justify-center active:opacity-60 transition-opacity">
-          <Chevron dir="right" />
-        </button>
+        <Stepper dir="right" />
       </div>
+
+      {/* ── 충돌 선택 패널 (기존 기록 vs 새 기록) ── */}
+      {conflict && (
+        <div className="shrink-0 px-[16px] pb-[12px] flex flex-col gap-[8px]">
+          <p className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[#6d7278]">
+            같은 시간대에 기록이 겹쳐요. 저장할 기록을 선택하세요.
+          </p>
+          {([
+            { key: "existing", name: "수학", duration: "2시간 49분", desc: "기존 기록 (다른 기기)", pending: false },
+            { key: "new", name: newRec.name, duration: newRec.time, desc: "방금 측정한 기록", pending: true },
+          ] as const).map((opt) => {
+            const sel = picked === opt.key;
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setPicked(opt.key)}
+                aria-pressed={sel}
+                className={`flex items-center gap-[12px] px-[16px] py-[12px] rounded-[12px] w-full text-left transition-colors ${
+                  sel ? "bg-[rgba(150,120,255,0.1)] border border-[#9678ff]" : "border border-[#efeff0] bg-white"
+                }`}
+              >
+                <div className="size-[28px] shrink-0 rounded-full bg-[#f2f2fa]" aria-hidden="true" />
+                <div className="flex-1 min-w-0 flex flex-col">
+                  <div className="flex items-center gap-[6px]">
+                    <span className="font-['Spoqa_Han_Sans_Neo:Medium',sans-serif] text-[14px] leading-[21px] text-[#333] whitespace-nowrap">
+                      {opt.name}
+                    </span>
+                    <span className="font-['Spoqa_Han_Sans_Neo:Regular',sans-serif] text-[12px] leading-[18px] text-[#b6b8b9]">
+                      {opt.duration}
+                    </span>
+                    {opt.pending && (
+                      <span className="shrink-0 px-[8px] py-[2px] rounded-[4px] bg-[#fef1ec] text-[#ff7a68] text-[12px] leading-[18px] font-['Pretendard:Medium',sans-serif]">
+                        대기
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-[#6d7278]">
+                    {opt.desc}
+                  </span>
+                </div>
+                {sel ? (
+                  <div className="size-[24px] shrink-0 rounded-full bg-[#9678ff] flex items-center justify-center">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                      <path d="M2.5 6.2L5 8.5L9.5 3.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                ) : (
+                  <div className="size-[24px] shrink-0 rounded-full border-[1.5px] border-[#d8d8d8]" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Record timeline (scroll) ── */}
       <div className="flex-1 min-h-0 overflow-y-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
@@ -158,6 +234,22 @@ export default function TimeEditScreen({ onBack }: { onBack?: () => void }) {
           ))}
         </div>
       </div>
+
+      {/* ── 충돌 해소 저장 버튼 ── */}
+      {conflict && (
+        <div className="shrink-0 bg-white px-[16px] pt-[12px] pb-[8px] border-t border-[#f2f2fa]">
+          <button
+            type="button"
+            disabled={!picked}
+            onClick={() => { resolvePendingTimers(); onResolve?.(); }}
+            className={`w-full h-[52px] rounded-[8px] text-[16px] leading-[24px] font-['Pretendard:Medium',sans-serif] transition-colors ${
+              picked ? "bg-[#9678ff] text-white active:bg-[#8461fa]" : "bg-[#f2f2fa] text-[#b6b8b9]"
+            }`}
+          >
+            이 기록으로 저장
+          </button>
+        </div>
+      )}
 
       {/* ── Safe area ── */}
       <div className="h-[34px] shrink-0 bg-white" />

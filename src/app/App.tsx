@@ -7,6 +7,7 @@ import YesterdayScreen from "./components/YesterdayScreen";
 import RankingScreen from "./components/RankingScreen";
 import PomodoroBottomSheet, { type PomodoroSettings } from "./components/PomodoroBottomSheet";
 import TimeEditScreen from "./components/TimeEditScreen";
+import ConflictPopup from "./components/ConflictPopup";
 import { OfflineProvider, useOffline } from "./contexts/OfflineContext";
 
 /** 개발용 온/오프라인 토글 — 오프라인 모드 UI 시연용 (실제 네트워크 감지 아님).
@@ -108,7 +109,7 @@ function StatusBar() {
   );
 }
 
-function TaskList({ onTaskClick }: { onTaskClick: () => void }) {
+function TaskList({ onTaskClick, onPendingClick }: { onTaskClick: () => void; onPendingClick: () => void }) {
   // 오프라인 임시 저장된 타이머는 맨 위에 "대기" 배지와 함께 표시 (PDF: 내 타이머 대기 배지)
   const { pendingTimers } = useOffline();
   const tasks = [
@@ -146,7 +147,7 @@ function TaskList({ onTaskClick }: { onTaskClick: () => void }) {
         <div
           key={idx}
           className="content-stretch flex items-center gap-[4px] relative w-full cursor-pointer active:bg-[#F7F7F8] transition-all duration-200 ease-out active:scale-[0.98] rounded-[8px] px-[4px] -mx-[4px]"
-          onClick={onTaskClick}
+          onClick={task.pending ? onPendingClick : onTaskClick}
         >
           <div className="flex-[1_0_0] flex gap-[8px] items-center min-w-px">
             <div className="relative shrink-0 size-[28px]">
@@ -202,6 +203,8 @@ export default function App() {
   const [isCalendarCollapsed, setIsCalendarCollapsed] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showTimeEdit, setShowTimeEdit] = useState(false);
+  const [timeEditConflict, setTimeEditConflict] = useState(false);
+  const [showConflict, setShowConflict] = useState(false);
   const [showCharacterSelection, setShowCharacterSelection] = useState(false);
   const [showTimerScreen, setShowTimerScreen] = useState(false);
   const [showTodoScreen, setShowTodoScreen] = useState(false);
@@ -327,8 +330,19 @@ export default function App() {
 
       {showTimeEdit && (
         <div className="fixed inset-0 z-[70] bg-white">
-          <TimeEditScreen onBack={() => setShowTimeEdit(false)} />
+          <TimeEditScreen
+            conflict={timeEditConflict}
+            onBack={() => { setShowTimeEdit(false); setTimeEditConflict(false); }}
+            onResolve={() => { setShowTimeEdit(false); setTimeEditConflict(false); }}
+          />
         </div>
+      )}
+
+      {showConflict && (
+        <ConflictPopup
+          onClose={() => setShowConflict(false)}
+          onViewTimeline={() => { setShowConflict(false); setShowTimeEdit(true); setTimeEditConflict(true); }}
+        />
       )}
 
       {showCharacterSelection && (
@@ -517,7 +531,7 @@ export default function App() {
               className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden"
               style={{ height: isCalendarCollapsed ? 'min(calc(100dvh - 296px), 420px)' : 'min(calc(100dvh - 600px), 420px)' }}
             >
-              <TaskList onTaskClick={() => setShowCharacterSelection(true)} />
+              <TaskList onTaskClick={() => setShowCharacterSelection(true)} onPendingClick={() => setShowConflict(true)} />
               {/* bottom padding so last item clears the fade */}
               <div className="h-[80px]" aria-hidden="true" />
             </div>
@@ -627,7 +641,7 @@ export default function App() {
               {/* 시간 수정 */}
               <button
                 className="flex items-center gap-[12px] px-[16px] py-[12px] w-full bg-white active:bg-[#efeff0] transition-colors duration-150 text-left"
-                onClick={() => { setIsMenuOpen(false); setShowTimeEdit(true); }}
+                onClick={() => { setIsMenuOpen(false); setShowTimeEdit(true); setTimeEditConflict(false); }}
               >
                 <div className="relative shrink-0 size-[24px]">
                   <div className="absolute inset-[10.42%]">
