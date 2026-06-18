@@ -174,11 +174,14 @@ export default function TodoScreen({
   onNavigateToTimer,
   onNavigateToYesterday,
   onNavigateToRanking,
+  theme = "dark",
 }: {
   onBack: () => void;
   onNavigateToTimer?: () => void;
   onNavigateToYesterday?: () => void;
   onNavigateToRanking?: () => void;
+  /** 화면 테마 — 홈 진입은 'light', 타이머 네비 진입은 'dark'. */
+  theme?: "light" | "dark";
 }) {
   // Each todo remembers the category it was created under so we can filter the list
   // by the currently-active chip. "전체" is a virtual filter that shows everything,
@@ -788,7 +791,7 @@ export default function TodoScreen({
   );
 
   return (
-    <div className="bg-[var(--color-bg-weak)] h-full w-full relative overflow-clip" data-name="할일">
+    <div className={`${theme === "light" ? "light " : ""}bg-[var(--color-bg-weak)] h-full w-full relative overflow-clip`} data-name="할일">
       {/* Header block: rounded bottom corners, contains status / title / calendar */}
       <div
         className="absolute left-0 top-0 w-full bg-[var(--color-bg-weak)] flex flex-col items-start rounded-bl-[16px] rounded-br-[16px]"
@@ -803,7 +806,7 @@ export default function TodoScreen({
           }
         />
         <SharedCalendar
-          theme="dark"
+          theme={theme}
           isCollapsed={isCalendarCollapsed}
           onToggle={() => setIsCalendarCollapsed(!isCalendarCollapsed)}
           selectedDay={selectedDate}

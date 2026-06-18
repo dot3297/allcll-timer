@@ -214,6 +214,8 @@ export default function App() {
   const [selectedCharacter, setSelectedCharacter] = useState("girl");
   const [showTimerScreen, setShowTimerScreen] = useState(false);
   const [showTodoScreen, setShowTodoScreen] = useState(false);
+  // 할일 화면 테마 — 홈 화면에서 진입하면 라이트, 타이머 하단 네비 등 앱 내부 진입은 다크
+  const [todoLight, setTodoLight] = useState(false);
   const [showYesterdayScreen, setShowYesterdayScreen] = useState(false);
   const [showRankingScreen, setShowRankingScreen] = useState(false);
   const [isPomodoroOn, setIsPomodoroOn] = useState(false);
@@ -250,6 +252,7 @@ export default function App() {
             }}
             onNavigateToTodo={() => {
               setShowYesterdayScreen(false);
+              setTodoLight(false);
               setShowTodoScreen(true);
             }}
             onNavigateToRanking={() => {
@@ -273,6 +276,7 @@ export default function App() {
             }}
             onNavigateToTodo={() => {
               setShowRankingScreen(false);
+              setTodoLight(false);
               setShowTodoScreen(true);
             }}
           />
@@ -280,8 +284,9 @@ export default function App() {
       )}
 
       {showTodoScreen && (
-        <div className="fixed inset-0 z-[60] bg-[#262626]">
+        <div className={`fixed inset-0 z-[60] ${todoLight ? "bg-white" : "bg-[#262626]"}`}>
           <TodoScreen
+            theme={todoLight ? "light" : "dark"}
             onBack={() => setShowTodoScreen(false)}
             onNavigateToTimer={() => {
               setShowTodoScreen(false);
@@ -303,7 +308,7 @@ export default function App() {
         <div className="fixed inset-0 z-50 bg-[#262626]">
           <TimerScreen
             character={selectedCharacter}
-            onNavigateToTodo={() => setShowTodoScreen(true)}
+            onNavigateToTodo={() => { setTodoLight(false); setShowTodoScreen(true); }}
             onNavigateToYesterday={() => setShowYesterdayScreen(true)}
             onNavigateToRanking={() => setShowRankingScreen(true)}
             onGoHome={(sessionSecs) => {
@@ -351,7 +356,7 @@ export default function App() {
       {showHomeScreen && (
         <HomeScreen
           onOpenTimer={() => setShowHomeScreen(false)}
-          onOpenTodo={() => { setShowHomeScreen(false); setShowTodoScreen(true); }}
+          onOpenTodo={() => { setShowHomeScreen(false); setTodoLight(true); setShowTodoScreen(true); }}
           onOpenSettings={() => setShowAppSettings(true)}
         />
       )}
