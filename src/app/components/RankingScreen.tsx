@@ -157,19 +157,35 @@ const TIER_MSG: Record<number, string> = {
 
 // ── Club data ─────────────────────────────────────────────────────────────────
 // 클럽 탭: 조(tier) 개념 없이 단순 순위(1,2,3,4...)만 존재.
-// 세그먼트 필터 = "전체" + 클럽 태그(최대 2개). 각 세그먼트는 독립적인 순위 리스트.
-const CLUB_TAGS = ["학교", "동아리"] as const;
-const CLUB_SEGMENTS = ["전체", ...CLUB_TAGS] as const;
-
+// 가입한 클럽들을 썸네일 캐러셀로 전환하며, 각 클럽은 독립적인 순위 리스트를 가진다.
+// (클럽명·썸네일은 가상 데이터 — 실제 클럽명은 길어서 말줄임 처리됨)
 const NAMES_CLUB_SCHOOL = ["반장님","우리반에이스","앞자리고정","조용한모범생","얼렁떵땅","뒷자리단골","급식부장","야자생존자","칠판지킴이","담임의자랑"];
 const NAMES_CLUB_CIRCLE = ["동방지박령","연습벌레","무대체질","합주의달인","얼렁떵땅","악보마스터","박자감甲","목청왕","리허설중독","앵콜요청러"];
 
-// 클럽 세그먼트별 순위 데이터 (index: 0=전체, 1=학교, 2=동아리). rank 5 = 나(얼렁떵땅).
-const CLUB_DATA: RankItem[][] = [
-  buildData(NAMES_T4, timeToSecs("05:34:05"), 800, 4),              // 전체
-  buildData(NAMES_CLUB_SCHOOL, timeToSecs("04:50:12"), 700, 4),    // 학교
-  buildData(NAMES_CLUB_CIRCLE, timeToSecs("03:40:33"), 600, 4),    // 동아리
+// 가입한 클럽 목록 (가상) — 썸네일은 Lorem Picsum 무료 이미지(시드 고정 → 항상 동일/안정),
+// 일부는 긴 이름으로 말줄임 노출
+type Club = { name: string; thumb: string };
+const CLUBS: Club[] = [
+  { name: "새벽반 스터디",            thumb: "https://picsum.photos/seed/club-dawn/160" },
+  { name: "열공 메이트 모임",          thumb: "https://picsum.photos/seed/club-mate/160" },
+  { name: "도서관 자율학습 1조",       thumb: "https://picsum.photos/seed/club-library/160" },
+  { name: "합격 기원 스터디 모임방",   thumb: "https://picsum.photos/seed/club-pass/160" },
+  { name: "밤샘 작당모의 클럽",        thumb: "https://picsum.photos/seed/club-night/160" },
+  { name: "코딩 부트캠프 4기 모임",    thumb: "https://picsum.photos/seed/club-coding/160" },
 ];
+
+// 클럽별 순위 데이터 — rank 5 = 나(얼렁떵땅). 클럽마다 명단/시간을 달리해 전환 시 리스트가 바뀐다.
+const CLUB_NAME_POOLS = [NAMES_T4, NAMES_CLUB_SCHOOL, NAMES_CLUB_CIRCLE];
+const CLUB_DATA: RankItem[][] = CLUBS.map((_, i) =>
+  buildData(
+    CLUB_NAME_POOLS[i % CLUB_NAME_POOLS.length],
+    timeToSecs("05:34:05") - i * 1200,
+    760,
+    4,
+  ),
+);
+// 클럽 탭 기본 선택 (가운데에 가깝게)
+const CLUB_DEFAULT_INDEX = 2;
 
 // ── Carousel tiers ────────────────────────────────────────────────────────────
 // 왼→오 오름차순 [1,2,3,4]. 활성(현재 조)이 중앙에 오면 더 높은 조(3,2,1)가 왼쪽에 보인다. (Figma 7130-35592)
@@ -293,42 +309,105 @@ function TierCarousel({ activeTier, onChange }: { activeTier: number; onChange: 
   );
 }
 
-// ── SegmentedControl (클럽 태그 필터) ─────────────────────────────────────────
-// Figma 7277-185789: 알약형 컨테이너(#333) 안에 세그먼트들, 활성은 브랜드 퍼플(#9678ff).
-function SegmentedControl({
-  options,
-  value,
-  onChange,
-}: {
-  options: readonly string[];
-  value: number;
-  onChange: (i: number) => void;
-}) {
+// ── ClubBadge (클럽 캐러셀 아이템) ────────────────────────────────────────────
+// Figma 7458-115141: 활성=100px 슬롯(68px 썸네일+브랜드 링, 흰 알약 라벨),
+// 비활성=84px 슬롯(56px 썸네일+딤 오버레이, 어두운 알약 라벨). 이름은 길면 말줄임.
+function ClubBadge({ club, isActive, onClick }: { club: Club; isActive: boolean; onClick: () => void }) {
+  const size   = isActive ? 100 : 84;
+  const offset = (CELL_SIZE - size) / 2;
+  const imgSz  = isActive ? 68 : 56;
+  const imgL   = (size - imgSz) / 2;
+  const imgT   = isActive ? 5 : 3;
+  const pillTop = isActive ? 62 : 48;
+  const pillH  = isActive ? 32 : 26.88;
+  const pillPx = isActive ? 12 : 10;
+  const pillBg = isActive ? "var(--color-fg-text-weak)" : "var(--color-bg-muted)";
+  const pillTextColor = isActive ? "var(--color-fg-text-solid-muted)" : "var(--color-fg-text-disable)";
+  const fs     = isActive ? 14 : 12;
+  const lh     = isActive ? "21px" : "18px";
+
   return (
-    <div className="flex items-center justify-center px-[16px] py-[16px] w-full">
-      <div className="bg-[var(--color-bg-muted)] flex h-[40px] items-center p-[4px] rounded-full">
-        {options.map((opt, i) => {
-          const active = i === value;
-          return (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => onChange(i)}
-              aria-pressed={active}
-              className={`min-w-[68px] h-[32px] flex items-center justify-center px-[8px] py-[6px] rounded-full transition-colors ${
-                active ? "bg-[#9678ff] drop-shadow-[0px_4px_10px_rgba(109,114,120,0.16)]" : ""
-              }`}
-            >
-              <p
-                className={`font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] whitespace-nowrap ${
-                  active ? "text-white" : "text-[var(--color-fg-text-disable)]"
-                }`}
-              >
-                {opt}
-              </p>
-            </button>
-          );
-        })}
+    <div
+      onClick={onClick}
+      className="absolute cursor-pointer"
+      style={{
+        left: offset, top: offset, width: size, height: size,
+        transition: `left ${DUR} ${EASE}, top ${DUR} ${EASE}, width ${DUR} ${EASE}, height ${DUR} ${EASE}`,
+      }}
+    >
+      {/* 썸네일 원 — 무료 이미지(Lorem Picsum). 비활성은 딤 오버레이 */}
+      <div
+        className="absolute rounded-full overflow-hidden bg-[var(--color-bg-muted)]"
+        style={{ left: imgL, top: imgT, width: imgSz, height: imgSz, transition: `all ${DUR} ${EASE}` }}
+      >
+        <img src={club.thumb} alt="" className="size-full object-cover" loading="lazy" />
+        {!isActive && <div className="absolute inset-0 bg-black/50" />}
+      </div>
+      {/* 이름 알약 (말줄임) */}
+      <div
+        className="absolute flex items-center justify-center rounded-full overflow-hidden"
+        style={{
+          left: "50%", transform: "translateX(-50%)", top: pillTop, height: pillH,
+          paddingLeft: pillPx, paddingRight: pillPx, background: pillBg, maxWidth: size - 6,
+          transition: `all ${DUR} ${EASE}`,
+        }}
+      >
+        <p
+          className="font-['Pretendard:Medium',sans-serif] whitespace-nowrap overflow-hidden text-ellipsis"
+          style={{ fontSize: fs, lineHeight: lh, color: pillTextColor }}
+        >
+          {club.name}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── ClubCarousel ──────────────────────────────────────────────────────────────
+// TierCarousel과 동일한 중앙 정렬 캐러셀 — 선택한 클럽을 항상 화면 중앙에 배치, 스와이프/탭으로 전환.
+function ClubCarousel({ selected, onChange }: { selected: number; onChange: (i: number) => void }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(375);
+  const touchStartX = useRef<number | null>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setWidth(el.offsetWidth);
+    const ro = new ResizeObserver(() => setWidth(el.offsetWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const widthBefore = selected * (CELL_SIZE + CAROUSEL_GAP);
+  const tx = width / 2 - widthBefore - CELL_SIZE / 2;
+
+  const goPrev = () => selected > 0 && onChange(selected - 1);
+  const goNext = () => selected < CLUBS.length - 1 && onChange(selected + 1);
+
+  return (
+    <div
+      ref={containerRef}
+      className="w-full overflow-hidden"
+      style={{ height: CELL_SIZE + 10 }}
+      onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+      onTouchEnd={(e) => {
+        if (touchStartX.current === null) return;
+        const dx = touchStartX.current - e.changedTouches[0].clientX;
+        if (dx > 40) goNext();
+        else if (dx < -40) goPrev();
+        touchStartX.current = null;
+      }}
+    >
+      <div
+        className="flex"
+        style={{ gap: CAROUSEL_GAP, transform: `translateX(${tx}px)`, transition: `transform ${DUR} ${EASE}` }}
+      >
+        {CLUBS.map((club, i) => (
+          <div key={club.name} style={{ width: CELL_SIZE, height: CELL_SIZE, flexShrink: 0, position: "relative" }}>
+            <ClubBadge club={club} isActive={i === selected} onClick={() => onChange(i)} />
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -392,8 +471,8 @@ export default function RankingScreen({
   const [activeTab,     setActiveTab]     = useState<"고2" | "클럽">("고2");
   // 탭마다 독립적인 활성 조를 기억
   const [tierByTab,     setTierByTab]     = useState<Record<"고2" | "클럽", number>>(TAB_DEFAULT_TIER);
-  // 클럽 세그먼트 필터 (0=전체, 1=태그1, 2=태그2)
-  const [clubSegment,   setClubSegment]   = useState(0);
+  // 클럽 캐러셀 선택 인덱스
+  const [clubSelected,  setClubSelected]  = useState(CLUB_DEFAULT_INDEX);
   const [tick,          setTick]          = useState(0);
   const [showGradeInfo, setShowGradeInfo] = useState(false);
 
@@ -418,7 +497,7 @@ export default function RankingScreen({
   let meItem: RankItem | undefined;
   let msg = "";
   if (isClub) {
-    rankData = CLUB_DATA[clubSegment] ?? CLUB_DATA[0];
+    rankData = CLUB_DATA[clubSelected] ?? CLUB_DATA[0];
     meItem   = rankData.find(item => item.isMe);
   } else {
     rankData = TIER_DATA[activeTier] ?? TIER_DATA[4];
@@ -473,8 +552,8 @@ export default function RankingScreen({
               setActiveTab(tab);
               // 탭 전환 시 해당 탭의 기본 조(나의 조)로 이동
               setTierByTab(prev => ({ ...prev, [tab]: TAB_DEFAULT_TIER[tab] }));
-              // 클럽 세그먼트는 항상 "전체"로 리셋
-              setClubSegment(0);
+              // 클럽 선택은 기본 클럽으로 리셋
+              setClubSelected(CLUB_DEFAULT_INDEX);
             }}
             className={`flex-1 h-[40px] flex items-center justify-center px-[16px] py-[10px] transition-colors ${
               activeTab === tab ? "border-b-2 border-[var(--color-fg-text-weak)]" : ""
@@ -496,12 +575,15 @@ export default function RankingScreen({
       <div className="shrink-0 relative flex flex-col items-center py-[24px] gap-[8px]">
 
         {isClub ? (
-          /* 클럽: 조 개념 없음 → 태그 세그먼트 필터 (전체 + 최대 2태그) */
-          <SegmentedControl
-            options={CLUB_SEGMENTS}
-            value={clubSegment}
-            onChange={setClubSegment}
-          />
+          /* 클럽: 가입한 클럽 썸네일 캐러셀 (선택한 클럽 = 중앙·확대).
+             고2 탭의 동기부여 메시지 자리를 같은 높이로 비워(invisible), 두 탭의 캐러셀·내 순위 카드가 같은 위치에 오게 한다. */
+          <>
+            <div className="flex gap-[4px] items-center justify-center px-[16px] invisible" aria-hidden="true">
+              <p className="font-['Pretendard:SemiBold',sans-serif] text-[20px] leading-[28px] text-center">&nbsp;</p>
+              <div style={{ width: 20, height: 20 }} />
+            </div>
+            <ClubCarousel selected={clubSelected} onChange={setClubSelected} />
+          </>
         ) : (
           <>
             {/* 고2: 동기부여 메시지 */}

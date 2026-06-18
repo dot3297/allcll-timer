@@ -19,6 +19,7 @@
  */
 import { useState, useEffect, useRef } from "react";
 import svgPaths from "../../imports/할일-2/svg-sh8v04ggfj";
+import checkboxEmpty from "../../imports/할일/checkbox-empty.svg";
 import CategoryAddPopup from "./CategoryAddPopup";
 import CategoryDuplicatePopup from "./CategoryDuplicatePopup";
 import SettingsScreen from "./SettingsScreen";
@@ -401,6 +402,14 @@ export default function TodoScreen({
     setStatusMenu(null);
   };
 
+  // 체크박스 탭 — 미완료 → 부분완료(세모) → 완료 → 미완료 순환
+  const cycleTodoStatus = (todo: TodoItem) => {
+    const order = ["none", "partial", "done"] as const;
+    const cur = todo.done ? "done" : todo.partial ? "partial" : "none";
+    const next = order[(order.indexOf(cur) + 1) % order.length];
+    setTodoStatus(todo, next);
+  };
+
   const removeTodo = (id: string) =>
     setTodos((prev) => prev.filter((t) => t.id !== id));
 
@@ -451,122 +460,117 @@ export default function TodoScreen({
   // Reusable row JSX so both flat and grouped renderings share one implementation.
   // Tapping a row whose text is non-empty opens the edit bottom sheet;
   // empty rows still allow direct inline typing (for the freshly-added row).
-  const renderActiveRow = (todo: TodoItem) => (
-    <div
-      key={todo.id}
-      className="shrink-0 bg-[var(--color-bg-muted)] rounded-[8px] h-[40px] flex items-center gap-[8px] px-[12px] cursor-text"
-      onClick={(e) => {
-        if ((e.target as HTMLElement).closest("button")) return;
-        (e.currentTarget.querySelector("input") as HTMLInputElement)?.focus();
-      }}
-      data-name="todo-row"
-    >
-      <button
-        type="button"
+  const renderActiveRow = (todo: TodoItem) => {
+    // 빈 행/입력 중인 행은 인라인 타이핑, 텍스트가 확정된 행은 탭하면 수정 바텀시트가 뜬다.
+    const isInputMode = !todo.text.trim() || inlineFocusId === todo.id;
+    return (
+      <div
+        key={todo.id}
+        className={`shrink-0 bg-[var(--color-bg-muted)] rounded-[8px] flex items-center gap-[8px] p-[12px] ${isInputMode ? "cursor-text" : "cursor-pointer"}`}
         onClick={(e) => {
-          if (!todo.text.trim()) return;
-          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-          setStatusMenu({ id: todo.id, x: rect.left, y: rect.bottom });
+          if ((e.target as HTMLElement).closest("button")) return;
+          if (isInputMode) {
+            (e.currentTarget.querySelector("input") as HTMLInputElement)?.focus();
+          } else {
+            // 확정된 할일 — 인풋 전체 선택 시 수정 바텀시트 (Figma 7469-145952)
+            setEditingTodoId(todo.id);
+          }
         }}
-        disabled={!todo.text.trim()}
-        aria-label="상태 선택"
-        aria-disabled={!todo.text.trim()}
-        className="size-[24px] flex items-center justify-center shrink-0"
+        data-name="todo-row"
       >
-        {todo.partial ? (
-          // 세모(중간 완료) — 브랜드 보더 박스 + 브랜드 삼각형
-          <div className="size-[18px] rounded-[4px] border border-[var(--color-bg-brand)] flex items-center justify-center">
-            <svg width="10" height="9" viewBox="0 0 10 9" fill="none" aria-hidden="true">
-              <path d="M5 0.8L9.33 8.2H0.67L5 0.8Z" fill="var(--color-bg-brand)" />
-            </svg>
-          </div>
+        {isInputMode ? (
+          <input
+            type="text"
+            value={todo.text}
+            placeholder="할일을 추가해 보세요"
+            data-todo-id={todo.id}
+            onFocus={() => setInlineFocusId(todo.id)}
+            onBlur={() => setInlineFocusId(null)}
+            onChange={(e) => updateTodo(todo.id, isOffline ? { text: e.target.value, pending: true } : { text: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.currentTarget.blur();
+                if (todo.text.trim()) addTodo(todo.category);
+              }
+              if (e.key === "Escape") e.currentTarget.blur();
+              if (e.key === "Backspace" && todo.text === "") {
+                e.preventDefault();
+                removeTodo(todo.id);
+              }
+            }}
+            className="flex-1 min-w-0 bg-transparent outline-none border-none font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-weak)] placeholder:text-[var(--color-fg-text-subtle)] cursor-text"
+            data-name="todo-input"
+          />
         ) : (
-          <div className="size-[18px] rounded-[4px] border border-[var(--color-fg-text-disable)]" />
+          <p
+            className="flex-1 min-w-0 font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-weak)] overflow-hidden whitespace-nowrap text-ellipsis"
+            title={todo.text}
+            data-name="todo-text"
+          >
+            {todo.text}
+          </p>
         )}
-      </button>
-      <input
-        type="text"
-        value={todo.text}
-        placeholder="할일을 추가해 보세요"
-        data-todo-id={todo.id}
-        onFocus={() => setInlineFocusId(todo.id)}
-        onBlur={() => setInlineFocusId(null)}
-        onChange={(e) => updateTodo(todo.id, isOffline ? { text: e.target.value, pending: true } : { text: e.target.value })}
-        onKeyDown={(e) => {
-          if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-          if (e.key === "Enter") {
-            e.preventDefault();
-            e.currentTarget.blur();
-            if (todo.text.trim()) addTodo(todo.category);
-          }
-          if (e.key === "Escape") e.currentTarget.blur();
-          if (e.key === "Backspace" && todo.text === "") {
-            e.preventDefault();
-            removeTodo(todo.id);
-          }
-        }}
-        className="flex-1 min-w-0 bg-transparent outline-none border-none font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-weak)] placeholder:text-[var(--color-fg-text-muted)] cursor-text"
-        data-name="todo-input"
-      />
-      {todo.pending && todo.text.trim() && <PendingBadge />}
-      {todo.text.trim() && (
+        {todo.pending && todo.text.trim() && <PendingBadge />}
+        {/* 체크박스 — 우측 (Figma 7274-263967). 탭하면 미완료→부분완료(세모)→완료 순환 */}
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-            setTodoMenu({ id: todo.id, x: window.innerWidth - rect.right, y: rect.bottom });
+            if (!todo.text.trim()) return;
+            cycleTodoStatus(todo);
           }}
-          className="shrink-0 size-[24px] flex items-center justify-center active:opacity-70 transition-opacity"
-          aria-label="더보기"
+          disabled={!todo.text.trim()}
+          aria-label="상태 변경"
+          aria-disabled={!todo.text.trim()}
+          className="size-[24px] flex items-center justify-center shrink-0"
         >
-          <svg width="16" height="4" viewBox="0 0 16 4" fill="none">
-            <circle cx="2" cy="2" r="1.5" fill="#D8D8D8" />
-            <circle cx="8" cy="2" r="1.5" fill="#D8D8D8" />
-            <circle cx="14" cy="2" r="1.5" fill="#D8D8D8" />
-          </svg>
+          {todo.partial ? (
+            // 세모(중간 완료) — 브랜드 보더 박스 + 브랜드 삼각형
+            <div className="size-[18px] rounded-[4px] border border-[var(--color-bg-brand)] flex items-center justify-center">
+              <svg width="10" height="9" viewBox="0 0 10 9" fill="none" aria-hidden="true">
+                <path d="M5 0.8L9.33 8.2H0.67L5 0.8Z" fill="var(--color-bg-brand)" />
+              </svg>
+            </div>
+          ) : (
+            <img src={checkboxEmpty} alt="" className="size-[18px]" />
+          )}
         </button>
-      )}
-    </div>
-  );
+      </div>
+    );
+  };
 
-  // 완료된 할일 행 — 각 카테고리 그룹 하단에 렌더. (체크 채움 + 취소선)
+  // 완료된 할일 행 — 라임 배경 + 우측 라임 체크 (Figma 7274-263967). 취소선 없음, 수정/삭제 불가.
   const renderDoneRow = (todo: TodoItem) => (
     <div
       key={todo.id}
-      className="shrink-0 bg-[var(--color-bg-muted)] rounded-[8px] h-[40px] flex items-center gap-[8px] px-[12px]"
+      className="shrink-0 bg-[#e5fc8b] rounded-[8px] flex items-center gap-[8px] p-[12px]"
       data-name="todo-row-done"
     >
-      <button
-        type="button"
-        onClick={(e) => {
-          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-          setStatusMenu({ id: todo.id, x: rect.left, y: rect.bottom });
-        }}
-        aria-label="상태 선택"
-        className="size-[24px] flex items-center justify-center shrink-0"
-      >
-        <div className="size-[18px] rounded-[4px] flex items-center justify-center bg-[var(--color-bg-brand)]">
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
-            <path d="M1.5 5.2L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
-      </button>
       <p
-        className="flex-1 min-w-0 font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-disable)] line-through overflow-hidden whitespace-nowrap text-ellipsis"
+        className="flex-1 min-w-0 font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[#333] overflow-hidden whitespace-nowrap text-ellipsis"
         title={todo.text}
       >
         {todo.text || " "}
       </p>
       {todo.pending && <PendingBadge />}
-      {/* 완료된 할일은 수정/삭제 불가 — "···"는 표시하되 눌러도 메뉴가 뜨지 않는다 */}
-      <div className="shrink-0 size-[24px] flex items-center justify-center" aria-hidden="true">
-        <svg width="16" height="4" viewBox="0 0 16 4" fill="none">
-          <circle cx="2" cy="2" r="1.5" fill="var(--color-fg-text-disable)" />
-          <circle cx="8" cy="2" r="1.5" fill="var(--color-fg-text-disable)" />
-          <circle cx="14" cy="2" r="1.5" fill="var(--color-fg-text-disable)" />
-        </svg>
-      </div>
+      {/* 체크박스 — 우측, 라임 완료. 탭하면 미완료로 순환 (완료→미완료) */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          cycleTodoStatus(todo);
+        }}
+        aria-label="상태 변경"
+        className="size-[24px] flex items-center justify-center shrink-0"
+      >
+        <div className="size-[18px] rounded-[4px] flex items-center justify-center bg-[#7da907]">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+            <path d="M1.5 5.2L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </button>
     </div>
   );
 
