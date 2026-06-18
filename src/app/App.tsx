@@ -322,16 +322,6 @@ export default function App() {
             pomodoroFocusMinutes={pomodoroSettings.focusMinutes}
             pomodoroBreakMinutes={pomodoroSettings.breakMinutes}
           />
-          {/* 임시 테스트 버튼 */}
-          <button
-            onClick={() => {
-              setShowTimerScreen(false);
-              setShowCharacterSelection(false);
-            }}
-            className="absolute top-[20px] left-[400px] z-50 bg-blue-500/80 text-white px-4 py-2 rounded-full text-xs shadow-lg"
-          >
-            ← 타이머홈으로
-          </button>
         </div>
       )}
 
@@ -389,13 +379,6 @@ export default function App() {
       )}
 
       <div className="bg-white h-dvh overflow-clip relative w-full" data-name="타이머">
-        {/* 임시 테스트 버튼 */}
-        <button
-          onClick={() => setShowCharacterSelection(true)}
-          className="absolute bottom-[20px] left-[400px] z-50 bg-blue-500/80 text-white px-4 py-2 rounded-full text-xs shadow-lg"
-        >
-          캐릭터 선택으로 →
-        </button>
 
         <div className="absolute bg-white content-stretch drop-shadow-[0px_4px_6px_rgba(109,114,120,0.08)] flex flex-col items-start left-0 rounded-bl-[16px] rounded-br-[16px] top-0 w-full z-10" data-name="Topnavigation">
         <StatusBar />

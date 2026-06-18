@@ -494,7 +494,7 @@ export default function SettingsScreen({
                   enterHideSelect(c);
                 }
               }}
-              className="flex-1 h-[56px] rounded-[8px] bg-[var(--color-bg-neutral-solid)] active:bg-[var(--color-bg-neutral-solid-pressed)] transition-colors flex items-center justify-center"
+              className="flex-1 h-[56px] rounded-[8px] bg-[var(--color-bg-muted)] active:opacity-80 transition-opacity flex items-center justify-center"
             >
               <span className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-white">
                 {selectedIsHidden ? "숨김 해제" : "숨기기"}

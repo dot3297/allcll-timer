@@ -895,22 +895,22 @@ export default function TodoScreen({
                   data-name="category-group"
                   data-category={cat}
                 >
-                  {/* 회색 "카테고리" 칩 헤더 (Chips_v2.0) — 탭하면 해당 카테고리에 할일 추가 */}
+                  {/* 브랜드 "카테고리" 칩 헤더 (Chips_v2.0, Figma 7221-33867) — 탭하면 해당 카테고리에 할일 추가 */}
                   <div className="self-start flex items-center gap-[6px]">
                     <button
                       type="button"
                       onClick={() => addTodo(cat)}
-                      className="h-[32px] px-[12px] py-[4px] rounded-[36px] bg-[var(--color-bg-muted)] inline-flex items-center justify-center gap-[2px] active:opacity-80 transition-opacity"
+                      className="h-[32px] px-[12px] py-[4px] rounded-[36px] bg-[var(--color-bg-brand)] inline-flex items-center justify-center gap-[2px] active:bg-[var(--color-bg-brand-pressed)] transition-colors"
                       aria-label={`${isAll ? "전체" : displayCat(cat)}에 할일 추가`}
                       data-name="category-chip"
                     >
-                      <span className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-inverse)] whitespace-nowrap">
+                      <span className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-white whitespace-nowrap">
                         {isAll ? "전체" : displayCat(cat)}
                       </span>
                       <svg className="size-[16px] shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                         <path
                           d="M8 3.5V12.5M3.5 8H12.5"
-                          stroke="var(--color-fg-text-inverse)"
+                          stroke="white"
                           strokeWidth="1.4"
                           strokeLinecap="round"
                           strokeLinejoin="round"
