@@ -42,7 +42,7 @@ export default function ConflictPopup({ onClose, onViewTimeline }: Props) {
               onClick={onClose}
               className="flex-1 rounded-[8px] border border-[#efeff0] bg-white text-[#333] text-[14px] leading-[21px] font-['Pretendard:Medium',sans-serif] active:scale-[0.98] transition-transform"
             >
-              닫기
+              나중에
             </button>
             <button
               type="button"

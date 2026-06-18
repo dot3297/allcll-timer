@@ -12,12 +12,15 @@
  * - 바텀시트 열릴 때 입력 필드에 자동 포커스
  */
 import { useEffect, useRef, useState } from "react";
+import iconTrash from "../../imports/할일/icon-trash-gray.svg";
 
 type Props = {
   /** Current category name (pre-filled in the input). */
   initialName: string;
   /** Called when "수정하기" is pressed with the new trimmed name. */
   onSave: (newName: string) => void;
+  /** Called when the trash button is pressed — delete this category. */
+  onDelete: () => void;
   /** Called when backdrop is tapped or Escape pressed. */
   onClose: () => void;
 };
@@ -31,7 +34,7 @@ type Props = {
  * - Clear-X icon on the right
  * - Action row: trash icon (56×56, #6d7278) + "수정하기" brand button (#9678ff)
  */
-export default function CategoryRenameSheet({ initialName, onSave, onClose }: Props) {
+export default function CategoryRenameSheet({ initialName, onSave, onDelete, onClose }: Props) {
   const [draft, setDraft] = useState(initialName);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -103,24 +106,17 @@ export default function CategoryRenameSheet({ initialName, onSave, onClose }: Pr
           )}
         </div>
 
-        {/* Action row: trash + 수정하기 */}
+        {/* Action row: trash(삭제) + 수정하기 (Figma 7546-116838) */}
         <div className="flex items-stretch gap-[8px] mt-[8px]">
-          {/* Trash — visual placeholder, wired to onClose (category delete is in settings list) */}
+          {/* Trash — 이 카테고리 삭제 */}
           <button
             type="button"
-            onClick={onClose}
-            aria-label="닫기"
-            className="size-[56px] shrink-0 rounded-[8px] bg-[#6d7278] flex items-center justify-center active:scale-95 transition-transform"
-            data-name="category-rename-close"
+            onClick={onDelete}
+            aria-label="삭제"
+            className="size-[56px] shrink-0 rounded-[8px] bg-[var(--color-bg-muted)] flex items-center justify-center active:scale-95 transition-transform"
+            data-name="category-rename-delete"
           >
-            <svg width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path
-                d="M3 4h10M5 4V2.5C5 2 5.5 1.5 6 1.5h4c.5 0 1 .5 1 1V4M4 4l.8 9c.05.6.55 1 1.1 1H10c.55 0 1.05-.4 1.1-1L12 4M7 7v5M9 7v5"
-                stroke="white"
-                strokeWidth="1.3"
-                strokeLinecap="round"
-              />
-            </svg>
+            <img src={iconTrash} alt="" className="size-[20px]" />
           </button>
           <button
             type="button"

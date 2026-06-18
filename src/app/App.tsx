@@ -8,6 +8,8 @@ import RankingScreen from "./components/RankingScreen";
 import PomodoroBottomSheet, { type PomodoroSettings } from "./components/PomodoroBottomSheet";
 import TimeEditScreen from "./components/TimeEditScreen";
 import ConflictPopup from "./components/ConflictPopup";
+import HomeScreen from "./components/HomeScreen";
+import AppSettingsScreen from "./components/AppSettingsScreen";
 import { OfflineProvider, useOffline } from "./contexts/OfflineContext";
 
 /** 개발용 온/오프라인 토글 — 오프라인 모드 UI 시연용 (실제 네트워크 감지 아님).
@@ -205,6 +207,8 @@ export default function App() {
   const [showTimeEdit, setShowTimeEdit] = useState(false);
   const [timeEditConflict, setTimeEditConflict] = useState(false);
   const [showConflict, setShowConflict] = useState(false);
+  const [showHomeScreen, setShowHomeScreen] = useState(false);
+  const [showAppSettings, setShowAppSettings] = useState(false);
   const [showCharacterSelection, setShowCharacterSelection] = useState(false);
   // 선택한 캐릭터 id — 달리기 배경 분기에 사용 ('boy' | 'girl' | 'cat')
   const [selectedCharacter, setSelectedCharacter] = useState("girl");
@@ -335,8 +339,14 @@ export default function App() {
         <div className="fixed inset-0 z-[70] bg-white">
           <TimeEditScreen
             conflict={timeEditConflict}
-            onBack={() => { setShowTimeEdit(false); setTimeEditConflict(false); }}
-            onResolve={() => { setShowTimeEdit(false); setTimeEditConflict(false); }}
+            onBack={() => {
+              // 충돌 모드에서 선택 없이 뒤로가기 → 충돌 팝업을 다시 띄운다
+              const wasConflict = timeEditConflict;
+              setShowTimeEdit(false);
+              setTimeEditConflict(false);
+              if (wasConflict) setShowConflict(true);
+            }}
+            onResolve={() => { setTimeEditConflict(false); }}
           />
         </div>
       )}
@@ -346,6 +356,18 @@ export default function App() {
           onClose={() => setShowConflict(false)}
           onViewTimeline={() => { setShowConflict(false); setShowTimeEdit(true); setTimeEditConflict(true); }}
         />
+      )}
+
+      {showHomeScreen && (
+        <HomeScreen
+          onOpenTimer={() => setShowHomeScreen(false)}
+          onOpenTodo={() => { setShowHomeScreen(false); setShowTodoScreen(true); }}
+          onOpenSettings={() => setShowAppSettings(true)}
+        />
+      )}
+
+      {showAppSettings && (
+        <AppSettingsScreen onBack={() => setShowAppSettings(false)} />
       )}
 
       {showCharacterSelection && (
@@ -380,7 +402,7 @@ export default function App() {
         <div className="relative shrink-0 w-full" data-name="nav-bar">
           <div className="flex flex-row items-center justify-center size-full">
             <div className="content-stretch flex items-center justify-between px-[12px] py-[16px] relative size-full">
-              <div className="content-stretch flex items-center relative shrink-0 size-[24px]" data-name="leading">
+              <button type="button" onClick={() => setShowHomeScreen(true)} aria-label="홈으로" className="content-stretch flex items-center relative shrink-0 size-[24px] active:opacity-70 transition-opacity cursor-pointer" data-name="leading">
                 <div className="relative shrink-0 size-[24px]" data-name="type=outline, name=expandleft">
                   <div className="absolute flex inset-[22.64%_35.14%_22.64%_32.79%] items-center justify-center" style={{ containerType: "size" }}>
                     <div className="-scale-x-100 flex-none h-[100cqw] rotate-90 w-[100cqh]">
@@ -392,7 +414,7 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </button>
               <div className="content-stretch flex gap-[16px] items-center relative shrink-0" data-name="trailing">
                 <div className="relative shrink-0 size-[24px]" data-name="type=fill, name=Statistic">
                   <div className="absolute inset-[17.71%_20.83%]" data-name="Vector">

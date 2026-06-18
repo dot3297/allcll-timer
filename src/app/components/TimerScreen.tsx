@@ -387,7 +387,8 @@ export default function TimerScreen({
       {/* 우측 사이드 아이콘 컬럼 — top 91px */}
       <div className="absolute top-[91px] right-[16px] flex flex-col gap-[12px] items-end">
 
-        {/* 랭킹 — Figma 7162-112496: icon-wrap left-[8px] top-0 / label-wrap left-0 top-[27px] */}
+        {/* 랭킹 — 오프라인 시 미노출 (실시간 랭킹 갱신 불가) */}
+        {!isOffline && (
         <button
           type="button"
           onClick={onNavigateToRanking}
@@ -413,6 +414,7 @@ export default function TimerScreen({
             <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-white whitespace-nowrap">랭킹</p>
           </div>
         </button>
+        )}
 
         {/* 캐시 — 코인 아이콘 배경 + 잔액 텍스트 오버레이 */}
         <button
@@ -436,11 +438,11 @@ export default function TimerScreen({
           </div>
         </button>
 
-        {/* 배경음 — 오프라인 시 비활성화(disable) */}
+        {/* 배경음 — 오프라인 시 미노출 */}
+        {!isOffline && (
         <button
           type="button"
-          onClick={() => { if (!isOffline) setShowMusicSheet(true); }}
-          disabled={isOffline}
+          onClick={() => setShowMusicSheet(true)}
           className={`inline-grid grid-cols-[max-content] grid-rows-[max-content] place-items-start relative shrink-0 transition-transform ${isOffline ? 'cursor-default' : 'active:scale-95'}`}
           aria-label="배경음"
         >
@@ -459,24 +461,24 @@ export default function TimerScreen({
             <p className={`font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] whitespace-nowrap ${isOffline ? 'text-[var(--color-fg-text-disable)]' : 'text-white'}`}>배경음</p>
           </div>
         </button>
+        )}
 
-        {/* 설정 — 오프라인 시 비활성화(disable) */}
+        {/* 설정 — 온라인/오프라인 모두 클릭 가능 */}
         <button
           type="button"
-          onClick={() => { if (!isOffline) setShowSettingsSheet(true); }}
-          disabled={isOffline}
-          className={`inline-grid grid-cols-[max-content] grid-rows-[max-content] place-items-start relative shrink-0 transition-transform ${isOffline ? 'cursor-default' : 'active:scale-95'}`}
+          onClick={() => setShowSettingsSheet(true)}
+          className="inline-grid grid-cols-[max-content] grid-rows-[max-content] place-items-start relative shrink-0 active:scale-95 transition-transform"
           aria-label="설정"
         >
-          <div className={`col-1 row-1 ml-[8px] mt-0 rounded-full size-[32px] overflow-hidden flex items-center justify-center pointer-events-none ${isOffline ? 'bg-[#333]' : 'bg-white'}`}>
-            <span className="flex items-center justify-center" style={{ filter: isOffline ? 'brightness(0) invert(0.5)' : undefined }}>
+          <div className="col-1 row-1 ml-[8px] mt-0 rounded-full size-[32px] overflow-hidden flex items-center justify-center pointer-events-none bg-white">
+            <span className="flex items-center justify-center">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" fill="var(--color-fg-text-solid-muted)" />
               </svg>
             </span>
           </div>
-          <div className={`col-1 row-1 ml-0 mt-[27px] flex items-center justify-center px-[8px] py-[2px] rounded-full w-[48px] pointer-events-none ${isOffline ? 'bg-[#333]' : 'bg-[var(--color-bg-brand-hover)]'}`}>
-            <p className={`font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] whitespace-nowrap ${isOffline ? 'text-[var(--color-fg-text-disable)]' : 'text-white'}`}>설정</p>
+          <div className="col-1 row-1 ml-0 mt-[27px] flex items-center justify-center px-[8px] py-[2px] rounded-full w-[48px] pointer-events-none bg-[var(--color-bg-brand-hover)]">
+            <p className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] whitespace-nowrap text-white">설정</p>
           </div>
         </button>
 

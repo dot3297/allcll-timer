@@ -20,6 +20,9 @@
 import { useState, useEffect, useRef } from "react";
 import svgPaths from "../../imports/할일-2/svg-sh8v04ggfj";
 import checkboxEmpty from "../../imports/할일/checkbox-empty.svg";
+import checkboxPartial from "../../imports/할일/checkbox-partial.svg";
+import iconCategoryAdd from "../../imports/할일/icon-category-add.svg";
+import iconCategoryEdit from "../../imports/할일/icon-category-edit.svg";
 import CategoryAddPopup from "./CategoryAddPopup";
 import CategoryDuplicatePopup from "./CategoryDuplicatePopup";
 import SettingsScreen from "./SettingsScreen";
@@ -161,6 +164,23 @@ export default function TodoScreen({
   // Using a ref (not state) so it doesn't trigger an extra render cycle.
   const pendingFocusId = useRef<string | null>(null);
 
+  // ── 드래그 재정렬 (Figma 7535-232864) ──
+  // 같은 카테고리 그룹 안에서 할일 행을 길게 눌러(터치) / 끌어서(마우스) 순서를 바꾼다.
+  // 드래그 중인 행은 그림자(Shadow/dark/500)로 떠 있는 느낌을 준다.
+  type DragRow = { id: string; el: HTMLElement; top: number; height: number };
+  const dragRef = useRef<{
+    id: string;
+    cat: string;
+    startY: number;
+    fromIndex: number;
+    toIndex: number;
+    rows: DragRow[];
+    rowH: number;
+    dragEl: HTMLElement;
+  } | null>(null);
+  // 직전 제스처가 드래그였는지 — true면 뒤따르는 onClick(수정 시트 열기)을 무시한다.
+  const didDragRef = useRef(false);
+
   // After every render, if there's a pending focus target, find it in the DOM and focus it.
   // This is more reliable than setTimeout(0) in React 18 concurrent mode where the DOM
   // may not yet be updated when a 0ms timeout fires.
@@ -238,6 +258,14 @@ export default function TodoScreen({
     prevOfflineRef.current = isOffline;
   }, [isOffline]);
 
+  // 오프라인에서 카테고리를 동기화 대기 표시(+ 새로 대기가 되면 글로벌 대기 카운터 +1).
+  // 이미 대기 중인 카테고리는 카운터를 중복 증가시키지 않는다.
+  const markCategoryPending = (key: string) => {
+    if (!isOffline) return;
+    if (!categoryPending[key]) addPending(1);
+    setCategoryPending((p) => ({ ...p, [key]: true }));
+  };
+
   const addCategory = (name: string) => {
     setShowCategoryPopup(false);
     // 표시 이름이 같은 기존 카테고리가 있으면 확인 팝업을 띄운다.
@@ -247,7 +275,7 @@ export default function TodoScreen({
       return;
     }
     setCategories((prev) => [...prev, name]);
-    if (isOffline) setCategoryPending((p) => ({ ...p, [name]: true }));
+    markCategoryPending(name);
     // 생성일 = 오늘. (생성일 이전 날짜에는 표시되지 않음)
     setCategoryCreated((prev) => ({ ...prev, [name]: todayStr }));
     // 빈 투두(텍스트 없는 입력칸)는 모두 정리 — 새 카테고리만 추가하고 할일 인풋은 만들지 않는다.
@@ -262,7 +290,7 @@ export default function TodoScreen({
       delete next[existingKey];
       return next;
     });
-    if (isOffline) setCategoryPending((p) => ({ ...p, [existingKey]: true }));
+    markCategoryPending(existingKey);
     setDupCategory(null);
   };
 
@@ -272,7 +300,7 @@ export default function TodoScreen({
   const createDuplicateCategory = (name: string, existingKey: string) => {
     const newKey = `dup-${Date.now()}-${Math.floor(performance.now())}`;
     setCategories((prev) => [...prev, newKey]);
-    if (isOffline) setCategoryPending((p) => ({ ...p, [newKey]: true }));
+    markCategoryPending(newKey);
     setCategoryName((prev) => ({ ...prev, [newKey]: name }));
     setCategoryCreated((prev) => ({ ...prev, [newKey]: todayStr }));
     setCategoryHide((prev) => ({
@@ -292,6 +320,7 @@ export default function TodoScreen({
       for (const c of list) next[c] = rule;
       return next;
     });
+    if (isOffline) list.forEach(markCategoryPending);
     if (list.includes(activeCategory)) setActiveCategory("전체");
   };
 
@@ -307,6 +336,7 @@ export default function TodoScreen({
       }
       return next;
     });
+    if (isOffline) list.forEach(markCategoryPending);
   };
 
   // Delete categories entirely. Removes them from categories, hide rules, and todos.
@@ -340,14 +370,17 @@ export default function TodoScreen({
     if (oldKey in categoryName) {
       if (categoryName[oldKey] === newName) return;
       setCategoryName((prev) => ({ ...prev, [oldKey]: newName }));
-      if (isOffline) setCategoryPending((p) => ({ ...p, [oldKey]: true }));
+      markCategoryPending(oldKey);
       return;
     }
     // 일반 카테고리: 키 자체(=표시 이름)를 변경.
     if (oldKey === newName) return;
     setCategories((prev) => prev.map((c) => (c === oldKey ? newName : c)));
-    // 키가 바뀌므로 대기 표시도 새 키로 이동
-    if (isOffline) setCategoryPending((p) => { const n = { ...p }; delete n[oldKey]; n[newName] = true; return n; });
+    // 키가 바뀌므로 대기 표시도 새 키로 이동 (새로 대기가 되면 글로벌 카운터 +1)
+    if (isOffline) {
+      if (!categoryPending[oldKey]) addPending(1);
+      setCategoryPending((p) => { const n = { ...p }; delete n[oldKey]; n[newName] = true; return n; });
+    }
     setCategoryHide((prev) => {
       if (!(oldKey in prev)) return prev;
       const next = { ...prev };
@@ -413,6 +446,143 @@ export default function TodoScreen({
   const removeTodo = (id: string) =>
     setTodos((prev) => prev.filter((t) => t.id !== id));
 
+  // 같은 카테고리 내에서 할일 순서 재배치. orderedIds는 그 그룹의 새 순서(상→하).
+  // todos 배열에서 해당 카테고리 슬롯만 새 순서로 교체하고 나머지는 그대로 둔다.
+  const reorderWithinCategory = (cat: string, orderedIds: string[]) => {
+    setTodos((prev) => {
+      const idSet = new Set(orderedIds);
+      const items = orderedIds
+        .map((id) => prev.find((t) => t.id === id))
+        .filter(Boolean) as TodoItem[];
+      let gi = 0;
+      return prev.map((t) => (t.category === cat && idSet.has(t.id) ? items[gi++] : t));
+    });
+  };
+
+  // 드래그 중 — 잡은 행을 손가락 위치로 옮기고, 지나친 이웃 행에 빈자리를 만든다.
+  const moveDrag = (clientY: number) => {
+    const ctx = dragRef.current;
+    if (!ctx) return;
+    const dY = clientY - ctx.startY;
+    ctx.dragEl.style.transform = `translateY(${dY}px)`;
+    const draggedTop = ctx.rows[ctx.fromIndex].top + dY;
+    let toIndex = Math.round((draggedTop - ctx.rows[0].top) / ctx.rowH);
+    toIndex = Math.max(0, Math.min(ctx.rows.length - 1, toIndex));
+    ctx.toIndex = toIndex;
+    ctx.rows.forEach((r, i) => {
+      if (i === ctx.fromIndex) return;
+      let shift = 0;
+      if (ctx.fromIndex < toIndex && i > ctx.fromIndex && i <= toIndex) shift = -ctx.rowH;
+      else if (ctx.fromIndex > toIndex && i >= toIndex && i < ctx.fromIndex) shift = ctx.rowH;
+      r.el.style.transform = shift ? `translateY(${shift}px)` : "";
+    });
+  };
+
+  // 드래그 종료 — 인라인 스타일 정리 후 새 순서를 commit.
+  const commitDrag = () => {
+    const ctx = dragRef.current;
+    if (!ctx) return;
+    const ids = ctx.rows.map((r) => r.id);
+    const [moved] = ids.splice(ctx.fromIndex, 1);
+    ids.splice(ctx.toIndex, 0, moved);
+    ctx.rows.forEach((r) => {
+      r.el.style.transform = "";
+      r.el.style.transition = "";
+      r.el.style.zIndex = "";
+      r.el.style.boxShadow = "";
+      r.el.style.touchAction = "";
+    });
+    const changed = ctx.fromIndex !== ctx.toIndex;
+    dragRef.current = null;
+    if (changed) reorderWithinCategory(ctx.cat, ids);
+  };
+
+  // 행 위에서 포인터 누름 — 마우스는 8px 이동, 터치는 200ms 롱프레스로 드래그 시작.
+  // (빈/편집 중 행, 체크박스 버튼에서는 드래그하지 않는다.)
+  const onRowPointerDown = (e: React.PointerEvent, todo: TodoItem) => {
+    if (e.button !== 0) return;
+    if ((e.target as HTMLElement).closest("button")) return;
+    const isInputMode = !todo.text.trim() || inlineFocusId === todo.id;
+    if (isInputMode) return;
+    didDragRef.current = false;
+
+    const cat = todo.category;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const pointerId = e.pointerId;
+    const pointerType = e.pointerType;
+    let longTimer = 0;
+
+    const begin = () => {
+      if (dragRef.current) return;
+      const rowEls = Array.from(
+        document.querySelectorAll(`[data-row-cat="${cat}"][data-row-id]`),
+      ) as HTMLElement[];
+      if (rowEls.length === 0) return;
+      const rows: DragRow[] = rowEls.map((el) => {
+        const r = el.getBoundingClientRect();
+        return { id: el.getAttribute("data-row-id")!, el, top: r.top, height: r.height };
+      });
+      const fromIndex = rows.findIndex((r) => r.id === todo.id);
+      if (fromIndex < 0) return;
+      const rowH = rows.length > 1 ? Math.abs(rows[1].top - rows[0].top) : rows[0].height + 8;
+      const dragEl = rows[fromIndex].el;
+      dragRef.current = { id: todo.id, cat, startY, fromIndex, toIndex: fromIndex, rows, rowH, dragEl };
+      didDragRef.current = true;
+      dragEl.style.transition = "none";
+      dragEl.style.zIndex = "50";
+      dragEl.style.boxShadow = "0px 4px 20px rgba(0,0,0,0.4)";
+      dragEl.style.touchAction = "none";
+      rows.forEach((r, i) => {
+        if (i !== fromIndex) r.el.style.transition = "transform 0.18s cubic-bezier(0.2,0,0,1)";
+      });
+      try {
+        dragEl.setPointerCapture(pointerId);
+      } catch {
+        /* capture may fail if pointer already released */
+      }
+    };
+
+    const onMove = (ev: PointerEvent) => {
+      if (dragRef.current) {
+        ev.preventDefault();
+        moveDrag(ev.clientY);
+        return;
+      }
+      const dist = Math.hypot(ev.clientX - startX, ev.clientY - startY);
+      if (pointerType === "mouse") {
+        if (dist > 8) {
+          begin();
+          moveDrag(ev.clientY);
+        }
+      } else if (dist > 10) {
+        // 롱프레스 전에 많이 움직임 → 스크롤 의도, 드래그 취소
+        cleanup();
+      }
+    };
+    const onUp = () => {
+      const wasDrag = !!dragRef.current;
+      if (wasDrag) commitDrag();
+      cleanup();
+      // 마우스는 pointerup 직후 click이 한 번 발생 → 그 click만 무시하고 다음 tick에 해제.
+      // 터치 드래그는 click이 없으므로 곧 해제되어 다음 탭이 막히지 않는다.
+      if (wasDrag) window.setTimeout(() => (didDragRef.current = false), 0);
+    };
+    const cleanup = () => {
+      window.clearTimeout(longTimer);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    if (pointerType !== "mouse") {
+      longTimer = window.setTimeout(() => begin(), 200);
+    }
+  };
+
   const addTodo = (category: string = activeCategory) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     // 날짜가 선택된 경우 해당 날짜로 투두 생성 (과거/미래 모두 허용)
@@ -466,9 +636,13 @@ export default function TodoScreen({
     return (
       <div
         key={todo.id}
-        className={`shrink-0 bg-[var(--color-bg-muted)] rounded-[8px] flex items-center gap-[8px] p-[12px] ${isInputMode ? "cursor-text" : "cursor-pointer"}`}
+        className={`shrink-0 bg-[var(--color-bg-muted)] rounded-[8px] flex items-center gap-[8px] px-[12px] py-[8px] ${isInputMode ? "cursor-text" : "cursor-grab active:cursor-grabbing"}`}
+        onPointerDown={isInputMode ? undefined : (e) => onRowPointerDown(e, todo)}
         onClick={(e) => {
           if ((e.target as HTMLElement).closest("button")) return;
+          // 방금 드래그로 순서를 바꾼 경우 — 뒤따르는 click을 무시한다.
+          // (플래그 해제는 pointerup 후 처리하므로 여기선 reset하지 않는다.)
+          if (didDragRef.current) return;
           if (isInputMode) {
             (e.currentTarget.querySelector("input") as HTMLInputElement)?.focus();
           } else {
@@ -477,6 +651,7 @@ export default function TodoScreen({
           }
         }}
         data-name="todo-row"
+        {...(isInputMode ? {} : { "data-row-id": todo.id, "data-row-cat": todo.category })}
       >
         {isInputMode ? (
           <input
@@ -527,12 +702,8 @@ export default function TodoScreen({
           className="size-[24px] flex items-center justify-center shrink-0"
         >
           {todo.partial ? (
-            // 세모(중간 완료) — 브랜드 보더 박스 + 브랜드 삼각형
-            <div className="size-[18px] rounded-[4px] border border-[var(--color-bg-brand)] flex items-center justify-center">
-              <svg width="10" height="9" viewBox="0 0 10 9" fill="none" aria-hidden="true">
-                <path d="M5 0.8L9.33 8.2H0.67L5 0.8Z" fill="var(--color-bg-brand)" />
-              </svg>
-            </div>
+            // 부분완료(세모) — 라임 박스 + 흰 삼각형 (Figma 7519-117674)
+            <img src={checkboxPartial} alt="" className="size-[24px]" />
           ) : (
             <img src={checkboxEmpty} alt="" className="size-[18px]" />
           )}
@@ -545,7 +716,7 @@ export default function TodoScreen({
   const renderDoneRow = (todo: TodoItem) => (
     <div
       key={todo.id}
-      className="shrink-0 bg-[#e5fc8b] rounded-[8px] flex items-center gap-[8px] p-[12px]"
+      className="shrink-0 bg-[#e5fc8b] rounded-[8px] flex items-center gap-[8px] px-[12px] py-[8px]"
       data-name="todo-row-done"
     >
       <p
@@ -929,35 +1100,37 @@ export default function TodoScreen({
             <div className="w-full flex justify-center py-[9px]">
               <div className="h-[5px] w-[40px] rounded-full bg-[var(--color-fg-text-disable)]" />
             </div>
-            {/* 옵션 카드 */}
+            {/* 옵션 리스트 — 좌측 아이콘 + 좌측정렬 텍스트 (Figma 7542-116474) */}
             <div className="w-full px-[16px]">
-              <div className="bg-[var(--color-bg-muted)] rounded-[12px] flex flex-col w-full overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditMenu(null);
-                    setShowCategoryPopup(true);
-                  }}
-                  className="px-[10px] py-[14px] w-full active:opacity-70 transition-opacity"
-                >
-                  <p className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-[var(--color-fg-text-weak)] text-center">
-                    새 카테고리 추가
-                  </p>
-                </button>
-                <div className="h-px w-full bg-[var(--color-border-subtle)]" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditMenu(null);
-                    setShowSettings(true);
-                  }}
-                  className="px-[10px] py-[14px] w-full active:opacity-70 transition-opacity"
-                >
-                  <p className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-[var(--color-fg-text-weak)] text-center">
-                    카테고리 편집
-                  </p>
-                </button>
-              </div>
+              {/* 카테고리 추가 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setEditMenu(null);
+                  setShowCategoryPopup(true);
+                }}
+                className="w-full flex gap-[12px] items-center py-[16px] active:opacity-70 transition-opacity"
+              >
+                <img src={iconCategoryAdd} alt="" className="size-[24px] shrink-0 p-[4px]" />
+                <span className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-[var(--color-fg-text-weak)]">
+                  카테고리 추가
+                </span>
+              </button>
+              <div className="h-px w-full bg-[var(--color-border-subtle)]" />
+              {/* 카테고리 편집 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setEditMenu(null);
+                  setShowSettings(true);
+                }}
+                className="w-full flex gap-[12px] items-center py-[16px] active:opacity-70 transition-opacity"
+              >
+                <img src={iconCategoryEdit} alt="" className="size-[24px] shrink-0" />
+                <span className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-[var(--color-fg-text-weak)]">
+                  카테고리 편집
+                </span>
+              </button>
             </div>
             {/* 닫기 버튼 */}
             <div className="w-full p-[16px]">
@@ -1012,6 +1185,7 @@ export default function TodoScreen({
             deleteCategories(list);
           }}
           categoryHasTodos={(cat) => todos.some((t) => t.category === cat && t.text.trim() !== "")}
+          pendingCategories={Object.keys(categoryPending).filter((k) => categoryPending[k])}
           onRename={(oldName, newName) => {
             renameCategory(oldName, newName);
           }}

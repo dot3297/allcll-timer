@@ -79,6 +79,8 @@ export default function TimeEditScreen({
   // 충돌 해소 — 같은 시간대 겹친 두 기록 중 남길 것 선택
   const { resolvePendingTimers } = useOffline();
   const [picked, setPicked] = useState<string | null>(null);
+  // 남긴 기록 — 선택 확정 시 타임라인에 반영(화면 유지). null이면 아직 미해소.
+  const [kept, setKept] = useState<(typeof CONFLICT_OPTS)[number] | null>(null);
 
   return (
     <div className="bg-white h-full w-full flex flex-col relative overflow-hidden" data-name="타이머_시간 수정">
@@ -183,8 +185,31 @@ export default function TimeEditScreen({
                 )}
               </div>
             </div>
+            {/* 해소된 기록 — 선택해서 남긴 기록을 타임라인에 반영 */}
+            {idx === 2 && kept && (
+              <div className="flex gap-[14px] items-stretch px-[16px]">
+                <div className="flex gap-[12px] shrink-0 items-stretch">
+                  <span className="w-[32px] shrink-0 text-right font-['Spoqa_Han_Sans_Neo:Medium',sans-serif] text-[12px] leading-[1.5] text-[#b6b8b9] pt-[10px]">
+                    13:00
+                  </span>
+                  <div className="w-[20px] shrink-0 flex justify-center">
+                    <div className="w-[20px] rounded-[2px] my-[8px]" style={{ background: kept.color, minHeight: 40 }} />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0 flex items-center py-[8px]">
+                  <div className="flex items-end gap-[4px]">
+                    <span className="font-['Spoqa_Han_Sans_Neo:Medium',sans-serif] leading-[1.5] text-[16px] text-[#6d7278]">
+                      {kept.name}
+                    </span>
+                    <span className="font-['Spoqa_Han_Sans_Neo:Regular',sans-serif] text-[12px] leading-[1.5] text-[#b6b8b9]">
+                      {kept.duration}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* 충돌 카드 — 겹친 시간대에 인라인 삽입 (Figma 7437-268787) */}
-            {conflict && idx === 2 && (
+            {conflict && !kept && idx === 2 && (
               <div className="mx-[16px] my-[8px] border border-[#ff7a68] rounded-[16px] overflow-hidden">
                 {/* 경고 배너 (코랄) */}
                 <div className="bg-[#fef1ec] px-[16px] py-[12px] flex items-center gap-[4px]">
@@ -237,7 +262,13 @@ export default function TimeEditScreen({
                   <button
                     type="button"
                     disabled={!picked}
-                    onClick={() => { resolvePendingTimers(); onResolve?.(); }}
+                    onClick={() => {
+                      const opt = CONFLICT_OPTS.find((o) => o.key === picked);
+                      if (!opt) return;
+                      setKept(opt);           // 선택한 기록을 타임라인에 반영(화면 유지)
+                      resolvePendingTimers(); // 홈 대기 배지 정리
+                      onResolve?.();          // 충돌 상태 해제(화면은 유지)
+                    }}
                     className={`w-full h-[44px] rounded-[8px] text-[14px] leading-[21px] font-['Pretendard:Medium',sans-serif] transition-colors ${
                       picked ? "bg-[#9678ff] text-white active:bg-[#8461fa]" : "bg-[#f2f2fa] text-[#b6b8b9]"
                     }`}
