@@ -125,6 +125,48 @@ function Header({
 }
 
 // ============================================================
+// 가상 시드 데이터 — 오늘 기준 "어제까지"의 데모 할일.
+// 캘린더 진행률 아크와 과거 날짜별 할일 목록을 채우기 위한 용도.
+// (이번 달 1일 ~ 어제까지 날짜별 2~4개, 완료/부분완료/미완료 혼합)
+// ============================================================
+type SeedTodo = { id: string; text: string; done: boolean; category: string; date: string; partial: boolean };
+function buildSeedTodos(): SeedTodo[] {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-based
+  const today = now.getDate();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const cats = ["카테고리 1", "카테고리 2", "카테고리 3"];
+  const pool = [
+    "수학 문제집 3장 풀기", "영어 단어 50개 암기", "국어 비문학 지문 2개",
+    "한국사 인강 1강 듣기", "과학 개념 정리", "모의고사 오답노트 정리",
+    "독서 30분 하기", "영어 듣기 1회분", "수학 오답 다시 풀기",
+    "영단어 복습", "문법 정리노트 작성", "사회 요약정리",
+  ];
+  const out: SeedTodo[] = [];
+  let seq = 0;
+  // 1일 ~ 어제(today-1)까지
+  for (let day = 1; day < today; day++) {
+    const date = `${year}-${pad(month + 1)}-${pad(day)}`;
+    const count = 2 + (day % 3); // 2~4개
+    for (let i = 0; i < count; i++) {
+      const r = (day * 7 + i * 3) % 10;
+      const done = r < 6; // 약 60% 완료
+      const partial = !done && r < 8; // 일부는 부분완료
+      out.push({
+        id: `seed-${date}-${seq++}`,
+        text: pool[(day * 2 + i) % pool.length],
+        done,
+        category: cats[(day + i) % cats.length],
+        date,
+        partial,
+      });
+    }
+  }
+  return out;
+}
+
+// ============================================================
 // TodoScreen — top-level
 // ============================================================
 export default function TodoScreen({
@@ -237,7 +279,7 @@ export default function TodoScreen({
   const [hideCompleted, setHideCompleted] = useState(false);
   // 동일 이름 카테고리 추가 시 확인 팝업 — { name: 표시이름, existingKey: 기존 카테고리 키 }
   const [dupCategory, setDupCategory] = useState<{ name: string; existingKey: string } | null>(null);
-  const [todos, setTodos] = useState<TodoItem[]>([]);
+  const [todos, setTodos] = useState<TodoItem[]>(() => buildSeedTodos());
   // 오프라인 중 추가/수정된 카테고리(키별) 동기화 대기 표시
   const [categoryPending, setCategoryPending] = useState<Record<string, boolean>>({});
 
