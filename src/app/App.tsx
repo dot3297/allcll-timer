@@ -287,7 +287,7 @@ export default function App() {
         <div className={`fixed inset-0 z-[60] ${todoLight ? "bg-white" : "bg-[#262626]"}`}>
           <TodoScreen
             theme={todoLight ? "light" : "dark"}
-            onBack={() => setShowTodoScreen(false)}
+            onBack={() => { setShowTodoScreen(false); if (todoLight) setShowHomeScreen(true); }}
             onNavigateToTimer={() => {
               setShowTodoScreen(false);
               setShowTimerScreen(true);

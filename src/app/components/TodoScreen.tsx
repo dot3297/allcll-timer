@@ -19,7 +19,6 @@
  */
 import { useState, useEffect, useRef } from "react";
 import svgPaths from "../../imports/할일-2/svg-sh8v04ggfj";
-import checkboxEmpty from "../../imports/할일/checkbox-empty.svg";
 import checkboxPartial from "../../imports/할일/checkbox-partial.svg";
 import iconCategoryAdd from "../../imports/할일/icon-category-add.svg";
 import iconCategoryEdit from "../../imports/할일/icon-category-edit.svg";
@@ -72,52 +71,88 @@ function StatusBar() {
 }
 
 // ============================================================
-// Header — title + stats icon only (settings moved to chip row)
+// Header — 다크: "할일" 좌측 + 통계/설정.  라이트: 백버튼 + 가운데 제목 + 통계/설정 (Figma 7553-119148)
 // ============================================================
 function Header({
+  theme,
   onBack,
   onStats,
   onSettings,
 }: {
+  theme: "light" | "dark";
   onBack: () => void;
   onStats: () => void;
   onSettings: (rect: DOMRect) => void;
 }) {
+  // 라이트는 흰 배경이라 헤더 아이콘을 어둡게, 다크는 기존 연한 회색.
+  const iconFill = theme === "light" ? "#333333" : "#D8D8D8";
+
+  const statsBtn = (
+    <button
+      type="button"
+      onClick={onStats}
+      aria-label="할일 통계"
+      className="size-[24px] relative active:opacity-70 transition-opacity"
+      data-name="stats-btn"
+    >
+      <div className="absolute inset-[17.71%_20.83%]">
+        <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 14 15.5">
+          <path d={svgPaths.p2a59a680} fill={iconFill} />
+        </svg>
+      </div>
+    </button>
+  );
+  const gearBtn = (
+    <button
+      type="button"
+      onClick={(e) => onSettings((e.currentTarget as HTMLElement).getBoundingClientRect())}
+      aria-label="카테고리 설정"
+      className="size-[24px] relative active:opacity-70 transition-opacity"
+      data-name="settings-btn"
+    >
+      <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
+        <path d={svgPaths.p1c54e880} fill={iconFill} />
+      </svg>
+    </button>
+  );
+
+  if (theme === "light") {
+    return (
+      <div className="h-[56px] shrink-0 w-full relative flex items-center px-[12px]">
+        {/* 좌측 백버튼 → 홈으로 */}
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="뒤로"
+          className="size-[24px] flex items-center justify-center active:opacity-70 transition-opacity"
+          data-name="todo-back"
+        >
+          <svg className="size-[24px]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 5L8 12L15 19" stroke="#333333" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        {/* 가운데 제목 */}
+        <p className="absolute left-1/2 -translate-x-1/2 font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-[var(--color-fg-text-weak)] whitespace-nowrap">
+          할일
+        </p>
+        {/* 우측 통계 / 설정 */}
+        <div className="ml-auto flex gap-[16px] items-center">
+          {statsBtn}
+          {gearBtn}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-[56px] shrink-0 w-full">
       <div className="flex flex-row items-center justify-between size-full pr-[12px] pl-[16px] py-[8px]">
         <p className="font-['Pretendard:SemiBold',sans-serif] text-[var(--color-fg-text-weak)] text-[20px] leading-[28px]">
           할일
         </p>
-
         <div className="flex gap-[12px] items-center">
-          {/* 통계 버튼 → 할일 통계 페이지 */}
-          <button
-            type="button"
-            onClick={onStats}
-            aria-label="할일 통계"
-            className="size-[24px] relative active:opacity-70 transition-opacity"
-            data-name="stats-btn"
-          >
-            <div className="absolute inset-[17.71%_20.83%]">
-              <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 14 15.5">
-                <path d={svgPaths.p2a59a680} fill="#D8D8D8" />
-              </svg>
-            </div>
-          </button>
-
-          {/* 설정(톱니) 버튼 → 카테고리 추가/편집 메뉴 */}
-          <button
-            type="button"
-            onClick={(e) => onSettings((e.currentTarget as HTMLElement).getBoundingClientRect())}
-            aria-label="카테고리 설정"
-            className="size-[24px] relative active:opacity-70 transition-opacity"
-            data-name="settings-btn"
-          >
-            <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 24 24">
-              <path d={svgPaths.p1c54e880} fill="#D8D8D8" />
-            </svg>
-          </button>
+          {statsBtn}
+          {gearBtn}
         </div>
       </div>
     </div>
@@ -750,7 +785,10 @@ export default function TodoScreen({
             // 부분완료(세모) — 라임 박스 + 흰 삼각형 (Figma 7519-117674)
             <img src={checkboxPartial} alt="" className="size-[24px]" />
           ) : (
-            <img src={checkboxEmpty} alt="" className="size-[18px]" />
+            // 미완료 — 테마 분기: 다크 #868B90 / 라이트 #D8D8D8
+            <svg className="size-[18px]" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <rect width="18" height="18" rx="4" fill={theme === "light" ? "#D8D8D8" : "#868B90"} />
+            </svg>
           )}
         </button>
       </div>
@@ -799,6 +837,7 @@ export default function TodoScreen({
       >
         <StatusBar />
         <Header
+          theme={theme}
           onBack={onBack}
           onStats={() => setShowStats(true)}
           onSettings={(rect) =>
@@ -836,9 +875,9 @@ export default function TodoScreen({
           Flex column so the todo list flex-grows and scrolls internally on overflow,
           while the chip row + section header stay fixed in size. */}
       <div
-        className={`absolute left-0 right-0 bottom-[93px] flex flex-col transition-all duration-300 ${
-          isCalendarCollapsed ? "top-[194px]" : "top-[502px]"
-        }`}
+        className={`absolute left-0 right-0 flex flex-col transition-all duration-300 ${
+          theme === "light" ? "bottom-[34px]" : "bottom-[93px]"
+        } ${isCalendarCollapsed ? "top-[194px]" : "top-[502px]"}`}
       >
         {/* Todo list — Figma 7267:119045: 카테고리별 세로 그룹. 각 그룹 = 회색 "카테고리" 칩 헤더 + 할일들.
             (필터 칩 행/편집 버튼은 제거 — 카테고리 관리는 헤더 톱니로 이동) */}
@@ -871,7 +910,8 @@ export default function TodoScreen({
               </button>
           )}
           <div
-            className="flex-1 min-h-0 flex flex-col gap-[16px] overflow-y-auto pr-[2px] pb-[8px]"
+            className="flex-1 min-h-0 flex flex-col gap-[16px] overflow-y-auto pr-[2px] pb-[8px] [&::-webkit-scrollbar]:hidden"
+            style={{ scrollbarWidth: "none" }}
             data-name="todo-list"
           >
             {/* 카테고리 그룹: 사용자 카테고리(기본 3개) + "전체"(미분류) 그룹은 할일이 있을 때만 표시.
@@ -886,11 +926,10 @@ export default function TodoScreen({
               const isAll = cat === "전체";
               const pinnedHere =
                 pinnedNewTodo && pinnedNewTodo.category === cat ? pinnedNewTodo : null;
-              const groupTodos = activeTodos.filter(
+              // 완료 여부와 무관하게 원래 순서를 유지 — 완료해도 그 자리에서 상태만 바뀐다.
+              const groupItems = visibleTodos.filter(
                 (t) => t.category === cat && t.text.trim() && t.id !== pinnedNewTodo?.id
               );
-              // 완료된 할일은 해당 카테고리 그룹 맨 하단에 표시
-              const groupDone = completedTodos.filter((t) => t.category === cat);
               return (
                 <div
                   key={cat}
@@ -898,22 +937,23 @@ export default function TodoScreen({
                   data-name="category-group"
                   data-category={cat}
                 >
-                  {/* 브랜드 "카테고리" 칩 헤더 (Chips_v2.0, Figma 7221-33867) — 탭하면 해당 카테고리에 할일 추가 */}
+                  {/* "카테고리" 칩 헤더 (Chips_v2.0/neutral-weak-solid) — 탭하면 해당 카테고리에 할일 추가
+                      색은 테마 인식: 다크 #333/#f9f9fa(7267-119047), 라이트 #f7f7f8/#333(7553-119154) */}
                   <div className="self-start flex items-center gap-[6px]">
                     <button
                       type="button"
                       onClick={() => addTodo(cat)}
-                      className="h-[32px] px-[12px] py-[4px] rounded-[36px] bg-[var(--color-bg-brand)] inline-flex items-center justify-center gap-[2px] active:bg-[var(--color-bg-brand-pressed)] transition-colors"
+                      className="h-[32px] px-[12px] py-[4px] rounded-[36px] bg-[var(--color-bg-muted)] inline-flex items-center justify-center gap-[2px] active:opacity-80 transition-opacity"
                       aria-label={`${isAll ? "전체" : displayCat(cat)}에 할일 추가`}
                       data-name="category-chip"
                     >
-                      <span className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-white whitespace-nowrap">
+                      <span className="font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[var(--color-fg-text-weak)] whitespace-nowrap">
                         {isAll ? "전체" : displayCat(cat)}
                       </span>
                       <svg className="size-[16px] shrink-0" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                         <path
                           d="M8 3.5V12.5M3.5 8H12.5"
-                          stroke="white"
+                          stroke="var(--color-fg-text-weak)"
                           strokeWidth="1.4"
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -923,8 +963,9 @@ export default function TodoScreen({
                     {!isAll && categoryPending[cat] && <PendingBadge />}
                   </div>
                   {pinnedHere && renderActiveRow(pinnedHere)}
-                  {groupTodos.map(renderActiveRow)}
-                  {!hideCompleted && groupDone.map(renderDoneRow)}
+                  {groupItems.map((t) =>
+                    t.done ? (hideCompleted ? null : renderDoneRow(t)) : renderActiveRow(t)
+                  )}
                 </div>
               );
             })}
@@ -985,14 +1026,16 @@ export default function TodoScreen({
         );
       })()}
 
-      {/* Bottom navigation */}
-      <div className="absolute bottom-0 left-0 w-full">
-        <BottomNav
-          activeTab="todo"
-          onTimer={onNavigateToTimer ?? onBack}
-          onYesterday={onNavigateToYesterday ?? onBack}
-        />
-      </div>
+      {/* Bottom navigation — 라이트 모드(홈 진입)에서는 미노출 (Figma 7553-119148) */}
+      {theme === "dark" && (
+        <div className="absolute bottom-0 left-0 w-full">
+          <BottomNav
+            activeTab="todo"
+            onTimer={onNavigateToTimer ?? onBack}
+            onYesterday={onNavigateToYesterday ?? onBack}
+          />
+        </div>
+      )}
 
       {/* "···" 액션 바 — 수정 / (오늘로 미루기) / 삭제 (Figma 7447-266638) */}
       {todoMenu && (() => {
