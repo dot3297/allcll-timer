@@ -84,6 +84,9 @@ export default function SettingsScreen({
 
   // 드래그 중 표시할 드롭 힌트 (다른 섹션으로 이동 시 해당 섹션 강조)
   const [dropHint, setDropHint] = useState<Section | null>(null);
+  // 드래그로 숨긴 직후 범위 확정 바 (Figma 7553-120979) — 대상 카테고리 키
+  const [hideConfirm, setHideConfirm] = useState<string | null>(null);
+  const [hidePastToo, setHidePastToo] = useState(false);
 
   const dragRef = useRef<{
     cat: string;
@@ -153,11 +156,18 @@ export default function SettingsScreen({
     };
 
     if (ctx.cross) {
+      const cat = ctx.cat;
       clearStyles();
       dragRef.current = null;
       setDropHint(null);
-      if (ctx.cross === "hidden") onHide([ctx.cat], "all");
-      else onUnhide([ctx.cat], "all");
+      if (ctx.cross === "hidden") {
+        // 기본은 오늘부터 숨김 → 범위 확정 바를 띄워 "이전 날 모두 숨기기" 선택
+        onHide([cat], "today");
+        setHidePastToo(false);
+        setHideConfirm(cat);
+      } else {
+        onUnhide([cat], "all");
+      }
       return;
     }
 
@@ -382,21 +392,67 @@ export default function SettingsScreen({
         </div>
       </div>
 
-      {/* "추가 하기" FAB */}
-      <button
-        type="button"
-        onClick={onAdd}
-        className="absolute right-[16px] bottom-[50px] h-[40px] flex items-center gap-[4px] pl-[12px] pr-[16px] rounded-full bg-[var(--color-bg-brand)] active:bg-[var(--color-bg-brand-pressed)] transition-colors"
-        style={{ boxShadow: "0px 4px 6px rgba(109,114,120,0.16)" }}
-        data-name="settings-fab-add"
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-          <path d="M8 3.5V12.5M3.5 8H12.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <span className="font-['Pretendard:Medium',sans-serif] text-white text-[14px] leading-[21px] whitespace-nowrap">
-          추가 하기
-        </span>
-      </button>
+      {/* 하단: 숨김 범위 확정 바(드래그 숨김 직후) / 평소 "추가 하기" FAB */}
+      {hideConfirm !== null ? (
+        <div className="absolute bottom-0 left-0 w-full" data-name="hide-confirm-bar">
+          <div className="flex flex-col gap-[10px] p-[16px]">
+            {/* 이전 날 모두 숨기기 체크박스 — 체크 시 과거 기록까지 전체 숨김 */}
+            <button
+              type="button"
+              onClick={() => {
+                const next = !hidePastToo;
+                setHidePastToo(next);
+                onHide([hideConfirm], next ? "all" : "today");
+              }}
+              className="flex items-center gap-[4px] active:opacity-70 transition-opacity"
+              aria-pressed={hidePastToo}
+              data-name="hide-past-toggle"
+            >
+              <div
+                className={`size-[18px] rounded-[4px] flex items-center justify-center shrink-0 transition-colors ${
+                  hidePastToo
+                    ? "bg-[var(--color-bg-brand)] border border-[var(--color-border-brand)]"
+                    : "border-[1.44px] border-[var(--color-border-subtle)]"
+                }`}
+              >
+                {hidePastToo && (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                    <path d="M1.5 5.2L4 7.5L8.5 2.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
+              <span className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-[var(--color-fg-text-muted)]">
+                이전 날 모두 숨기기
+              </span>
+            </button>
+            {/* 완료 */}
+            <button
+              type="button"
+              onClick={() => setHideConfirm(null)}
+              className="h-[56px] w-full rounded-[8px] bg-[var(--color-bg-brand)] active:bg-[var(--color-bg-brand-pressed)] transition-colors flex items-center justify-center"
+              data-name="hide-confirm-done"
+            >
+              <span className="font-['Pretendard:Medium',sans-serif] text-[16px] leading-[24px] text-white">완료</span>
+            </button>
+          </div>
+          <div className="h-[34px] w-full shrink-0" />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={onAdd}
+          className="absolute right-[16px] bottom-[50px] h-[40px] flex items-center gap-[4px] pl-[12px] pr-[16px] rounded-full bg-[var(--color-bg-brand)] active:bg-[var(--color-bg-brand-pressed)] transition-colors"
+          style={{ boxShadow: "0px 4px 6px rgba(109,114,120,0.16)" }}
+          data-name="settings-fab-add"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M8 3.5V12.5M3.5 8H12.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="font-['Pretendard:Medium',sans-serif] text-white text-[14px] leading-[21px] whitespace-nowrap">
+            추가 하기
+          </span>
+        </button>
+      )}
 
       {/* Safe area */}
       <div className="h-[34px] shrink-0" />
