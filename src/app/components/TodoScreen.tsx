@@ -20,6 +20,9 @@
 import { useState, useEffect, useRef } from "react";
 import svgPaths from "../../imports/할일-2/svg-sh8v04ggfj";
 import checkboxPartial from "../../imports/할일/checkbox-partial.svg";
+import iconToday from "../../imports/할일/icon-today.svg";
+import iconPostpone from "../../imports/할일/icon-postpone.svg";
+import iconToastCheck from "../../imports/할일/icon-toast-check.svg";
 import iconCategoryAdd from "../../imports/할일/icon-category-add.svg";
 import iconCategoryEdit from "../../imports/할일/icon-category-edit.svg";
 import CategoryAddPopup from "./CategoryAddPopup";
@@ -315,6 +318,8 @@ export default function TodoScreen({
   const [newTodoId, setNewTodoId] = useState<string | null>(null);
   // 완료한 할일 숨기기 토글 — true면 각 카테고리 그룹에서 완료 행을 렌더하지 않는다.
   const [hideCompleted, setHideCompleted] = useState(false);
+  // "할일 미루기" 후 표시되는 토스트 (Figma 7565-125577)
+  const [postponeToast, setPostponeToast] = useState(false);
   // 동일 이름 카테고리 추가 시 확인 팝업 — { name: 표시이름, existingKey: 기존 카테고리 키 }
   const [dupCategory, setDupCategory] = useState<{ name: string; existingKey: string } | null>(null);
   const [todos, setTodos] = useState<TodoItem[]>(() => buildSeedTodos());
@@ -337,6 +342,13 @@ export default function TodoScreen({
     }
     prevOfflineRef.current = isOffline;
   }, [isOffline]);
+
+  // "미루기 완료!" 토스트 자동 사라짐 (약 2.5초)
+  useEffect(() => {
+    if (!postponeToast) return;
+    const id = window.setTimeout(() => setPostponeToast(false), 2500);
+    return () => window.clearTimeout(id);
+  }, [postponeToast]);
 
   // 오프라인에서 카테고리를 동기화 대기 표시(+ 새로 대기가 되면 글로벌 대기 카운터 +1).
   // 이미 대기 중인 카테고리는 카운터를 중복 증가시키지 않는다.
@@ -881,34 +893,7 @@ export default function TodoScreen({
       >
         {/* Todo list — Figma 7267:119045: 카테고리별 세로 그룹. 각 그룹 = 회색 "카테고리" 칩 헤더 + 할일들.
             (필터 칩 행/편집 버튼은 제거 — 카테고리 관리는 헤더 톱니로 이동) */}
-        <div className="px-[16px] mt-[8px] flex-1 min-h-0 flex flex-col relative">
-          {/* 완료 숨기기/보기 — 첫 카테고리 칩과 같은 라인 우측에 고정 (완료 항목이 있을 때만 표시) */}
-          {completedTodos.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setHideCompleted((v) => !v)}
-                className="absolute top-[5px] right-[16px] z-[20] flex items-center gap-[2px] px-[8px] py-[4px] rounded-[4px] active:opacity-70 transition-opacity"
-                data-name="toggle-completed"
-                aria-pressed={hideCompleted}
-              >
-                {/* Figma 7290-114025 — 채워진 눈 아이콘 (보기) / 눈+슬래시 (숨기기) */}
-                <svg className="size-[12px] shrink-0" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                  <g transform="translate(0.5 2.15)" fill="var(--color-fg-text-subtle)">
-                    <path d="M5.5 0C8.15 0 10.2 2.2876 11 4.2876C10.2 6.28754 7.64996 7.7002 5.5 7.7002C3.35004 7.7002 0.800047 6.28754 0 4.2876C0.8 2.2876 2.85 0 5.5 0ZM5.5 0.799805C4.4154 0.799805 3.41976 1.2671 2.58154 1.99707C1.83588 2.64645 1.2476 3.47755 0.875488 4.27783C1.2327 4.96052 1.86368 5.58315 2.65527 6.05762C3.55418 6.59636 4.58852 6.8999 5.5 6.8999C6.41148 6.8999 7.44582 6.59636 8.34473 6.05762C9.13625 5.58319 9.7668 4.96044 10.124 4.27783C9.7519 3.47761 9.16406 2.6464 8.41846 1.99707C7.58024 1.2671 6.5846 0.799805 5.5 0.799805Z" />
-                    <path d="M7.2002 3.8501C7.2002 2.94193 6.40817 2.1499 5.5 2.1499C4.59183 2.1499 3.7998 2.94193 3.7998 3.8501C3.7998 4.76871 4.5522 5.55029 5.5 5.55029V6.3501C4.1 6.3501 3 5.2001 3 3.8501C3 2.5001 4.15 1.3501 5.5 1.3501C6.85 1.3501 8 2.5001 8 3.8501C8 5.2001 6.9 6.3501 5.5 6.3501V5.55029C6.4478 5.55029 7.2002 4.76871 7.2002 3.8501Z" />
-                  </g>
-                  {!hideCompleted && (
-                    <>
-                      <path d="M2 2L10 10" stroke="var(--color-bg-weak)" strokeWidth="2.6" strokeLinecap="round" />
-                      <path d="M2 2L10 10" stroke="var(--color-fg-text-subtle)" strokeWidth="1.2" strokeLinecap="round" />
-                    </>
-                  )}
-                </svg>
-                <span className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-[var(--color-fg-text-subtle)] whitespace-nowrap">
-                  {hideCompleted ? "완료 보기" : "완료 숨기기"}
-                </span>
-              </button>
-          )}
+        <div className="px-[16px] mt-[8px] flex-1 min-h-0 flex flex-col">
           <div
             className="flex-1 min-h-0 flex flex-col gap-[16px] overflow-y-auto pr-[2px] pb-[8px] [&::-webkit-scrollbar]:hidden"
             style={{ scrollbarWidth: "none" }}
@@ -922,7 +907,7 @@ export default function TodoScreen({
                   (t) => t.category === "전체" && (t.text.trim() || t.id === pinnedNewTodo?.id)
                 ) || completedTodos.some((t) => t.category === "전체");
               return allHasTodos ? ["전체", ...visibleCategories] : [...visibleCategories];
-            })().map((cat) => {
+            })().map((cat, groupIdx) => {
               const isAll = cat === "전체";
               const pinnedHere =
                 pinnedNewTodo && pinnedNewTodo.category === cat ? pinnedNewTodo : null;
@@ -939,7 +924,7 @@ export default function TodoScreen({
                 >
                   {/* "카테고리" 칩 헤더 (Chips_v2.0/neutral-weak-solid) — 탭하면 해당 카테고리에 할일 추가
                       색은 테마 인식: 다크 #333/#f9f9fa(7267-119047), 라이트 #f7f7f8/#333(7553-119154) */}
-                  <div className="self-start flex items-center gap-[6px]">
+                  <div className="flex items-center gap-[6px] w-full">
                     <button
                       type="button"
                       onClick={() => addTodo(cat)}
@@ -961,6 +946,33 @@ export default function TodoScreen({
                       </svg>
                     </button>
                     {!isAll && categoryPending[cat] && <PendingBadge />}
+                    {/* 완료 숨기기/보기 — 첫 그룹 칩 라인 우측 (완료 항목이 있을 때만). 스크롤과 함께 흐름. */}
+                    {groupIdx === 0 && completedTodos.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setHideCompleted((v) => !v)}
+                        className="ml-auto flex items-center gap-[2px] px-[8px] py-[4px] rounded-[4px] active:opacity-70 transition-opacity"
+                        data-name="toggle-completed"
+                        aria-pressed={hideCompleted}
+                      >
+                        {/* Figma 7290-114025 — 채워진 눈 아이콘 (보기) / 눈+슬래시 (숨기기) */}
+                        <svg className="size-[12px] shrink-0" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                          <g transform="translate(0.5 2.15)" fill="var(--color-fg-text-subtle)">
+                            <path d="M5.5 0C8.15 0 10.2 2.2876 11 4.2876C10.2 6.28754 7.64996 7.7002 5.5 7.7002C3.35004 7.7002 0.800047 6.28754 0 4.2876C0.8 2.2876 2.85 0 5.5 0ZM5.5 0.799805C4.4154 0.799805 3.41976 1.2671 2.58154 1.99707C1.83588 2.64645 1.2476 3.47755 0.875488 4.27783C1.2327 4.96052 1.86368 5.58315 2.65527 6.05762C3.55418 6.59636 4.58852 6.8999 5.5 6.8999C6.41148 6.8999 7.44582 6.59636 8.34473 6.05762C9.13625 5.58319 9.7668 4.96044 10.124 4.27783C9.7519 3.47761 9.16406 2.6464 8.41846 1.99707C7.58024 1.2671 6.5846 0.799805 5.5 0.799805Z" />
+                            <path d="M7.2002 3.8501C7.2002 2.94193 6.40817 2.1499 5.5 2.1499C4.59183 2.1499 3.7998 2.94193 3.7998 3.8501C3.7998 4.76871 4.5522 5.55029 5.5 5.55029V6.3501C4.1 6.3501 3 5.2001 3 3.8501C3 2.5001 4.15 1.3501 5.5 1.3501C6.85 1.3501 8 2.5001 8 3.8501C8 5.2001 6.9 6.3501 5.5 6.3501V5.55029C6.4478 5.55029 7.2002 4.76871 7.2002 3.8501Z" />
+                          </g>
+                          {!hideCompleted && (
+                            <>
+                              <path d="M2 2L10 10" stroke="var(--color-bg-weak)" strokeWidth="2.6" strokeLinecap="round" />
+                              <path d="M2 2L10 10" stroke="var(--color-fg-text-subtle)" strokeWidth="1.2" strokeLinecap="round" />
+                            </>
+                          )}
+                        </svg>
+                        <span className="font-['Pretendard:Medium',sans-serif] text-[12px] leading-[18px] text-[var(--color-fg-text-subtle)] whitespace-nowrap">
+                          {hideCompleted ? "완료 보기" : "완료 숨기기"}
+                        </span>
+                      </button>
+                    )}
                   </div>
                   {pinnedHere && renderActiveRow(pinnedHere)}
                   {groupItems.map((t) =>
@@ -983,14 +995,11 @@ export default function TodoScreen({
             <button
               type="button"
               onClick={() => setSelectedDate(null)}
-              className="pointer-events-auto flex gap-[4px] h-[40px] items-center pl-[12px] pr-[16px] py-[12px] bg-white border border-[var(--color-border-weak)] rounded-full active:opacity-80 transition-opacity"
-              style={{ boxShadow: "0px 4px 6px rgba(0,0,0,0.32)" }}
+              className="pointer-events-auto flex gap-[4px] h-[40px] items-center pl-[12px] pr-[16px] py-[12px] bg-white border border-[#efeff0] rounded-full active:opacity-80 transition-opacity"
+              style={{ boxShadow: "0px 4px 6px rgba(109,114,120,0.16)" }}
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M13 8C13 10.76 10.76 13 8 13C5.24 13 3 10.76 3 8C3 5.24 5.24 3 8 3C9.45 3 10.76 3.6 11.72 4.56" stroke="var(--color-bg-muted)" strokeWidth="1.4" strokeLinecap="round"/>
-                <path d="M10.5 2L12 4.5L9.5 5" stroke="var(--color-bg-muted)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span className="font-['Pretendard:Medium',sans-serif] text-[var(--color-bg-muted)] text-[14px] leading-[21px] whitespace-nowrap">
+              <img src={iconToday} alt="" className="size-[16px] shrink-0" />
+              <span className="font-['Pretendard:Medium',sans-serif] text-[#333333] text-[14px] leading-[21px] whitespace-nowrap">
                 오늘 날짜로
               </span>
             </button>
@@ -1008,15 +1017,12 @@ export default function TodoScreen({
                     )
                   );
                   setSelectedDate(null);
+                  setPostponeToast(true);
                 }}
                 className="pointer-events-auto flex gap-[4px] h-[40px] items-center pl-[12px] pr-[16px] py-[12px] bg-[var(--color-bg-brand)] rounded-full active:opacity-80 transition-opacity"
-                style={{ boxShadow: "0px 4px 6px rgba(0,0,0,0.32)" }}
+                style={{ boxShadow: "0px 4px 6px rgba(109,114,120,0.16)" }}
               >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <rect x="1.5" y="3.5" width="13" height="11" rx="1.5" stroke="white" strokeWidth="1.3"/>
-                  <path d="M5 1.5V4.5M11 1.5V4.5" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
-                  <path d="M8 7.5V11.5M6 9.5L8 11.5L10 9.5" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+                <img src={iconPostpone} alt="" className="size-[16px] shrink-0" />
                 <span className="font-['Pretendard:Medium',sans-serif] text-white text-[14px] leading-[21px] whitespace-nowrap">
                   할일 미루기
                 </span>
@@ -1025,6 +1031,21 @@ export default function TodoScreen({
           </div>
         );
       })()}
+
+      {/* "미루기 완료!" 토스트 (Figma 7565-125577) — 할일 미루기 후 표시, 약 2.5초 뒤 사라짐 */}
+      {postponeToast && (
+        <div
+          className="absolute left-[16px] right-[16px] bottom-[100px] z-[80] pointer-events-none"
+          data-name="postpone-toast"
+        >
+          <div className="backdrop-blur-[50px] bg-[rgba(38,38,38,0.8)] flex gap-[12px] items-center px-[20px] py-[16px] rounded-[16px]">
+            <img src={iconToastCheck} alt="" className="size-[24px] shrink-0" />
+            <p className="flex-1 min-w-0 font-['Pretendard:Regular',sans-serif] text-[16px] leading-[24px] text-white">
+              미루기 완료!
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Bottom navigation — 라이트 모드(홈 진입)에서는 미노출 (Figma 7553-119148) */}
       {theme === "dark" && (
