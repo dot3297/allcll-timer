@@ -811,8 +811,11 @@ export default function TodoScreen({
   const renderDoneRow = (todo: TodoItem) => (
     <div
       key={todo.id}
-      className="shrink-0 bg-[#e5fc8b] rounded-[8px] flex items-center gap-[8px] px-[12px] py-[8px]"
+      onPointerDown={(e) => onRowPointerDown(e, todo)}
+      className="shrink-0 bg-[#e5fc8b] rounded-[8px] flex items-center gap-[8px] px-[12px] py-[8px] cursor-grab active:cursor-grabbing"
       data-name="todo-row-done"
+      data-row-id={todo.id}
+      data-row-cat={todo.category}
     >
       <p
         className="flex-1 min-w-0 font-['Pretendard:Medium',sans-serif] text-[14px] leading-[21px] text-[#333] overflow-hidden whitespace-nowrap text-ellipsis"

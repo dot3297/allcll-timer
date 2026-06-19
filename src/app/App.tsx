@@ -10,6 +10,7 @@ import TimeEditScreen from "./components/TimeEditScreen";
 import ConflictPopup from "./components/ConflictPopup";
 import HomeScreen from "./components/HomeScreen";
 import AppSettingsScreen from "./components/AppSettingsScreen";
+import WifiSettingsScreen from "./components/WifiSettingsScreen";
 import { OfflineProvider, useOffline } from "./contexts/OfflineContext";
 
 /** 개발용 온/오프라인 토글 — 오프라인 모드 UI 시연용 (실제 네트워크 감지 아님).
@@ -209,6 +210,8 @@ export default function App() {
   const [showConflict, setShowConflict] = useState(false);
   const [showHomeScreen, setShowHomeScreen] = useState(false);
   const [showAppSettings, setShowAppSettings] = useState(false);
+  // "온라인 모드" FAB → OS 와이파이 설정 목업 화면 (Figma 7577-120119)
+  const [showWifiScreen, setShowWifiScreen] = useState(false);
   const [showCharacterSelection, setShowCharacterSelection] = useState(false);
   // 선택한 캐릭터 id — 달리기 배경 분기에 사용 ('boy' | 'girl' | 'cat')
   const [selectedCharacter, setSelectedCharacter] = useState("girl");
@@ -357,12 +360,16 @@ export default function App() {
         <HomeScreen
           onOpenTimer={() => setShowHomeScreen(false)}
           onOpenTodo={() => { setShowHomeScreen(false); setTodoLight(true); setShowTodoScreen(true); }}
-          onOpenSettings={() => setShowAppSettings(true)}
+          onOpenSettings={() => setShowWifiScreen(true)}
         />
       )}
 
       {showAppSettings && (
         <AppSettingsScreen onBack={() => setShowAppSettings(false)} />
+      )}
+
+      {showWifiScreen && (
+        <WifiSettingsScreen onBack={() => setShowWifiScreen(false)} />
       )}
 
       {showCharacterSelection && (

@@ -113,7 +113,7 @@ export default function CategoryRenameSheet({ initialName, onSave, onDelete, onC
             type="button"
             onClick={onDelete}
             aria-label="삭제"
-            className="size-[56px] shrink-0 rounded-[8px] bg-[var(--color-bg-muted)] flex items-center justify-center active:scale-95 transition-transform"
+            className="size-[56px] shrink-0 rounded-[8px] bg-[#333333] flex items-center justify-center active:scale-95 transition-transform"
             data-name="category-rename-delete"
           >
             <img src={iconTrash} alt="" className="size-[20px]" />
