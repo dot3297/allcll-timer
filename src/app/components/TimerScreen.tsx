@@ -39,7 +39,7 @@ import imgRestBg from "../../imports/타이머일반모드쉴래요클릭시/tim
 import imgRestBoy from "../../imports/타이머일반모드쉴래요클릭시/timer_boy.png";
 import imgRestCat from "../../imports/타이머일반모드쉴래요클릭시/timer_cat.png";
 import imgClockBgCircle from "../../imports/타이머일반모드쉴래요클릭시/timer_clock_bg_circle.svg";
-import videoEndBg from "../../imports/타이머종료/timer_end_bg.mp4";
+import imgEndBg from "../../imports/타이머종료/timer_end_bg_new.png";
 import Bubble from "../../imports/Bubble/Bubble";
 import CashPopup from "./CashPopup";
 import CashHistoryScreen from "./CashHistoryScreen";
@@ -299,14 +299,11 @@ export default function TimerScreen({
           src={restImg}
           className={`absolute h-[82.1%] left-0 max-w-none top-[-13.1%] w-full object-cover transition-opacity duration-500 ${isResting && timerMode === 'running' ? 'opacity-100' : 'opacity-0'}`}
         />
-        {/* 종료 모드 비디오 */}
-        <video
-          src={videoEndBg}
+        {/* 종료 모드 배경 이미지 */}
+        <img
+          alt=""
+          src={imgEndBg}
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${isStopped ? 'opacity-100' : 'opacity-0'}`}
-          autoPlay
-          loop
-          muted
-          playsInline
         />
       </div>
 
@@ -325,12 +322,6 @@ export default function TimerScreen({
         <div className="absolute h-[238px] left-0 top-0 w-full" style={{ backgroundImage: "linear-gradient(179.92deg, rgb(13, 13, 62) 0.10971%, rgba(13, 13, 62, 0) 99.891%)" }} />
       )}
 
-      {/* 종료 상태 하단 사각형 #314767 — 377×314px */}
-      <div
-        className={`absolute bottom-0 left-0 w-full transition-opacity duration-500 ${isStopped ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        style={{ height: 314, background: '#314767', width: '100%' }}
-      />
-
       {/* 말풍선 — 종료 후 또는 시계 모드에선 숨김 */}
       <div className={`transition-opacity duration-500 ${(isStopped || timerMode === 'clock') ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <ChatBubble isResting={isResting} />
@@ -338,7 +329,7 @@ export default function TimerScreen({
 
       {/* "45분만~" 전체 폭 배너 — 실시간 랭킹 진행 메시지(스크롤 티커).
           오프라인에서는 실시간 랭킹 갱신이 불가하므로 숨긴다(오프라인 배너와 자리도 겹침). */}
-      {!isOffline && (
+      {!isOffline && !isStopped && (
       <div className="absolute top-[42px] left-0 w-full h-[33px] backdrop-blur-[50px] bg-[rgba(255,255,255,0.1)] overflow-hidden flex items-center">
         <style>{`
           @keyframes bannerScroll {
@@ -366,8 +357,8 @@ export default function TimerScreen({
       </div>
       )}
 
-      {/* 모드 스위처 — top 91px 중앙 */}
-      <div className="absolute top-[91px] left-1/2 -translate-x-1/2 backdrop-blur-[20px] bg-white/10 rounded-[999px] flex items-center p-[4px] shrink-0">
+      {/* 모드 스위처 — top 91px 중앙 (종료 후 숨김) */}
+      <div className={`absolute top-[91px] left-1/2 -translate-x-1/2 backdrop-blur-[20px] bg-white/10 rounded-[999px] flex items-center p-[4px] shrink-0 transition-opacity duration-500 ${isStopped ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
         <button
           type="button"
           onClick={() => setTimerMode('running')}
@@ -384,8 +375,8 @@ export default function TimerScreen({
         </button>
       </div>
 
-      {/* 우측 사이드 아이콘 컬럼 — top 91px */}
-      <div className="absolute top-[91px] right-[16px] flex flex-col gap-[12px] items-end">
+      {/* 우측 사이드 아이콘 컬럼 — top 91px (종료 후 숨김) */}
+      <div className={`absolute top-[91px] right-[16px] flex flex-col gap-[12px] items-end transition-opacity duration-500 ${isStopped ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
 
         {/* 랭킹 — 오프라인 시 미노출 (실시간 랭킹 갱신 불가) */}
         {!isOffline && (
