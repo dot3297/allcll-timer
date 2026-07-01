@@ -437,20 +437,8 @@ export default function App() {
           progressData={(() => {
             const now = new Date();
             const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
-            // 시간 구간별 비율: 30분=25%, 1시간=50%, 2시간=75%, 3시간+=100%
-            const secsToRatio = (secs: number) => {
-              const SEGMENTS = [
-                { from: 0,     to: 1800,  ratioFrom: 0,    ratioTo: 0.25 }, // 0~30분
-                { from: 1800,  to: 3600,  ratioFrom: 0.25, ratioTo: 0.5  }, // 30분~1시간
-                { from: 3600,  to: 7200,  ratioFrom: 0.5,  ratioTo: 0.75 }, // 1시간~2시간
-                { from: 7200,  to: 10800, ratioFrom: 0.75, ratioTo: 1.0  }, // 2시간~3시간
-              ];
-              if (secs >= 10800) return 1;
-              const seg = SEGMENTS.find(s => secs >= s.from && secs < s.to);
-              if (!seg) return 0;
-              const t = (secs - seg.from) / (seg.to - seg.from);
-              return seg.ratioFrom + t * (seg.ratioTo - seg.ratioFrom);
-            };
+            // 선형 증가: 1시간(3600초)=100%, 그 이상은 100%로 고정
+            const secsToRatio = (secs: number) => Math.min(1, Math.max(0, secs / 3600));
             return timerSessions
               .filter(s => s.date.startsWith(ym))
               .map(s => ({
